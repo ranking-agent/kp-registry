@@ -1,7 +1,7 @@
 """REST wrapper for KP registry SQLite server."""
-import sqlite3
 from typing import Dict, List
 
+import aiosqlite
 from fastapi import Body, Depends, FastAPI, Query
 from pydantic import AnyUrl, BaseModel
 
@@ -16,13 +16,10 @@ class KP(BaseModel):
     target_type: str
 
 
-def get_db():
+async def get_db():
     """Get SQLite connection."""
-    try:
-        db = sqlite3.connect('kps.db')
+    async with aiosqlite.connect('kps.db') as db:
         yield db
-    finally:
-        db.close()
 
 
 example = {
@@ -35,16 +32,15 @@ example = {
 
 
 @app.get('/kps')
-def get_all_knowledge_providers(
+async def get_all_knowledge_providers(
         db=Depends(get_db),
 ):
     """Get all knowledge providers."""
     statement = 'SELECT * FROM knowledge_providers'
-    c = db.cursor()
-    c.execute(
+    cursor = await db.execute(
         statement,
     )
-    results = c.fetchall()
+    results = await cursor.fetchall()
     return {
         kp[0]: {
             'source_type': kp[1],
@@ -56,7 +52,7 @@ def get_all_knowledge_providers(
 
 
 @app.get('/kps/{url:path}')
-def get_knowledge_provider(
+async def get_knowledge_provider(
         url: AnyUrl,
         db=Depends(get_db),
 ):
@@ -65,13 +61,11 @@ def get_knowledge_provider(
         SELECT source_type, edge_type, target_type FROM knowledge_providers
         WHERE url=?
         '''
-    c = db.cursor()
-    print(str(url))
-    c.execute(
+    cursor = await db.execute(
         statement,
         (str(url),),
     )
-    results = c.fetchone()
+    results = await cursor.fetchone()
     return {
         'source_type': results[0],
         'edge_type': results[1],
@@ -80,7 +74,7 @@ def get_knowledge_provider(
 
 
 @app.post('/kps')
-def add_knowledge_provider(
+async def add_knowledge_provider(
         kps: Dict[AnyUrl, KP] = Body(..., example=example),
         db=Depends(get_db),
 ):
@@ -89,30 +83,30 @@ def add_knowledge_provider(
         (url, kp.source_type, kp.edge_type, kp.target_type)
         for url, kp in kps.items()
     ]
-    with db:
-        # Create table
-        db.execute('''CREATE TABLE IF NOT EXISTS knowledge_providers
-                    (url text UNIQUE, source_type text, edge_type text, target_type text)''')
-        # Insert rows of data
-        db.executemany('INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)', values)
+    # Create table
+    await db.execute('''CREATE TABLE IF NOT EXISTS knowledge_providers
+                (url text UNIQUE, source_type text, edge_type text, target_type text)''')
+    # Insert rows of data
+    await db.executemany('INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)', values)
+    await db.commit()
 
 
 @app.delete('/kps/{url:path}')
-def remove_knowledge_provider(
+async def remove_knowledge_provider(
         url: AnyUrl,
         db=Depends(get_db),
 ):
     """Delete a knowledge provider."""
-    with db:
-        db.execute(
-            '''DELETE FROM knowledge_providers
-               WHERE url=?''',
-            (url,),
-        )
+    await db.execute(
+        '''DELETE FROM knowledge_providers
+            WHERE url=?''',
+        (url,),
+    )
+    await db.commit()
 
 
 @app.get('/search')
-def search_for_knowledge_providers(
+async def search_for_knowledge_providers(
         source_type: List[str] = Query(..., example=['a']),
         edge_type: List[str] = Query(..., example=['related to']),
         target_type: List[str] = Query(..., example=['b']),
@@ -128,11 +122,10 @@ def search_for_knowledge_providers(
         AND edge_type in ({edge_bindings})
         AND target_type in ({target_bindings})
         '''
-    c = db.cursor()
-    c.execute(
+    cursor = await db.execute(
         statement,
         list(source_type) + list(edge_type) + list(target_type)
     )
 
-    results = c.fetchall()
+    results = await cursor.fetchall()
     return [row[0] for row in results]
