@@ -26,7 +26,7 @@ def get_db():
 
 
 example = {
-    'my_kp_url': {
+    'http://my_kp_url': {
         'source_type': 'disease',
         'edge_type': 'related to',
         'target_type': 'gene',
@@ -81,7 +81,7 @@ def get_knowledge_provider(
 
 @app.post('/kps')
 def add_knowledge_provider(
-        kps: Dict[str, KP] = Body(..., example=example),
+        kps: Dict[AnyUrl, KP] = Body(..., example=example),
         db=Depends(get_db),
 ):
     """Add a knowledge provider."""
@@ -95,6 +95,20 @@ def add_knowledge_provider(
                     (url text UNIQUE, source_type text, edge_type text, target_type text)''')
         # Insert rows of data
         db.executemany('INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)', values)
+
+
+@app.delete('/kps/{url:path}')
+def remove_knowledge_provider(
+        url: AnyUrl,
+        db=Depends(get_db),
+):
+    """Delete a knowledge provider."""
+    with db:
+        db.execute(
+            '''DELETE FROM knowledge_providers
+               WHERE url=?''',
+            (url,),
+        )
 
 
 @app.get('/search')
