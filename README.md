@@ -1,3 +1,11 @@
 # KP Registry
 
-`uvicorn main:app --port 4983 --reload`
+## deployment
+
+### Python
+
+`uvicorn server:app --host 0.0.0.0 --port 4983`
+
+### Docker
+
+`docker-compose up`

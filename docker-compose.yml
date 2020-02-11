@@ -1,0 +1,13 @@
+version: "3.7"
+services: 
+  kp_registry:
+    container_name: kp_registry
+    image: kp_registry
+    build:
+      context: .
+    volumes:
+      - type: bind
+        source: ./data
+        target: /home/murphy/data
+    ports:
+      - "4983:4983"

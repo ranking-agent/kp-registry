@@ -5,7 +5,11 @@ import aiosqlite
 from fastapi import Body, Depends, FastAPI, Query
 from pydantic import AnyUrl, BaseModel
 
-app = FastAPI()
+app = FastAPI(
+    title='Knowledge Provider Registry',
+    description='Registry of Translator knowledge providers',
+    version='1.0.0',
+)
 
 
 class KP(BaseModel):
@@ -18,7 +22,7 @@ class KP(BaseModel):
 
 async def get_db():
     """Get SQLite connection."""
-    async with aiosqlite.connect('kps.db') as db:
+    async with aiosqlite.connect('data/kps.db') as db:
         yield db
 
 
@@ -129,3 +133,14 @@ async def search_for_knowledge_providers(
 
     results = await cursor.fetchall()
     return [row[0] for row in results]
+
+
+@app.post('/clear')
+async def clear_kps(
+    db=Depends(get_db),
+):
+    """Clear all registered KPs."""
+    await db.execute(
+        '''DELETE FROM knowledge_providers''',
+    )
+    await db.commit()
