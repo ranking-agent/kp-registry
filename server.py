@@ -1,4 +1,5 @@
 """REST wrapper for KP registry SQLite server."""
+from collections import defaultdict
 from typing import Dict, List
 
 import aiosqlite
@@ -44,15 +45,15 @@ async def get_all_knowledge_providers(
     cursor = await db.execute(
         statement,
     )
-    results = await cursor.fetchall()
-    return {
-        kp[0]: {
-            'source_type': kp[1],
-            'edge_type': kp[2],
-            'target_type': kp[3],
-        }
-        for kp in results
-    }
+    rows = await cursor.fetchall()
+    kps = defaultdict(list)
+    for row in rows:
+        kps[row[0]].append({
+            'source_type': row[1],
+            'edge_type': row[2],
+            'target_type': row[3],
+        })
+    return kps
 
 
 @app.get('/kps/{url:path}')
@@ -69,12 +70,12 @@ async def get_knowledge_provider(
         statement,
         (str(url),),
     )
-    results = await cursor.fetchone()
-    return {
-        'source_type': results[0],
-        'edge_type': results[1],
-        'target_type': results[2],
-    }
+    rows = await cursor.fetchall()
+    return [{
+        'source_type': row[0],
+        'edge_type': row[1],
+        'target_type': row[2],
+    } for row in rows]
 
 
 @app.post('/kps')
@@ -88,8 +89,14 @@ async def add_knowledge_provider(
         for url, kp in kps.items()
     ]
     # Create table
-    await db.execute('''CREATE TABLE IF NOT EXISTS knowledge_providers
-                (url text UNIQUE, source_type text, edge_type text, target_type text)''')
+    await db.execute('''
+    CREATE TABLE IF NOT EXISTS knowledge_providers(
+        url text,
+        source_type text,
+        edge_type text,
+        target_type text,
+        UNIQUE(url, source_type, edge_type, target_type)
+    )''')
     # Insert rows of data
     await db.executemany('INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)', values)
     await db.commit()
@@ -121,7 +128,7 @@ async def search_for_knowledge_providers(
     edge_bindings = ', '.join('?' for _ in range(len(edge_type)))
     target_bindings = ', '.join('?' for _ in range(len(target_type)))
     statement = f'''
-        SELECT url FROM knowledge_providers
+        SELECT DISTINCT url FROM knowledge_providers
         WHERE source_type in ({source_bindings})
         AND edge_type in ({edge_bindings})
         AND target_type in ({target_bindings})
