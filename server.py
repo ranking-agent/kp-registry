@@ -1,9 +1,10 @@
 """REST wrapper for KP registry SQLite server."""
 from collections import defaultdict
+import sqlite3
 from typing import Dict, List
 
 import aiosqlite
-from fastapi import Body, Depends, FastAPI, Query
+from fastapi import Body, Depends, FastAPI, Query, HTTPException
 from pydantic import AnyUrl, BaseModel
 
 app = FastAPI(
@@ -28,11 +29,11 @@ async def get_db():
 
 
 example = {
-    'http://my_kp_url': {
+    'http://my_kp_url': [{
         'source_type': 'disease',
         'edge_type': 'related to',
         'target_type': 'gene',
-    },
+    }],
 }
 
 
@@ -80,13 +81,13 @@ async def get_knowledge_provider(
 
 @app.post('/kps')
 async def add_knowledge_provider(
-        kps: Dict[AnyUrl, KP] = Body(..., example=example),
+        kps: Dict[AnyUrl, List[KP]] = Body(..., example=example),
         db=Depends(get_db),
 ):
     """Add a knowledge provider."""
     values = [
         (url, kp.source_type, kp.edge_type, kp.target_type)
-        for url, kp in kps.items()
+        for url, kps in kps.items() for kp in kps
     ]
     # Create table
     await db.execute('''
@@ -98,7 +99,15 @@ async def add_knowledge_provider(
         UNIQUE(url, source_type, edge_type, target_type)
     )''')
     # Insert rows of data
-    await db.executemany('INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)', values)
+    try:
+        await db.executemany(
+            'INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)',
+            values
+        )
+    except sqlite3.IntegrityError as err:
+        if 'UNIQUE constraint failed' in str(err):
+            raise HTTPException(400, 'KP already exists')
+        raise err
     await db.commit()
 
 
