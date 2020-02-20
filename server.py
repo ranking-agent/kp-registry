@@ -4,7 +4,7 @@ import sqlite3
 from typing import Dict, List
 
 import aiosqlite
-from fastapi import Body, Depends, FastAPI, Query, HTTPException
+from fastapi import Body, Depends, FastAPI, HTTPException
 from pydantic import AnyUrl, BaseModel
 
 app = FastAPI(
