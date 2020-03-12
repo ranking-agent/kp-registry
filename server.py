@@ -128,7 +128,7 @@ async def remove_knowledge_provider(
 @app.post('/search')
 async def search_for_knowledge_providers(
         source_type: List[str] = Body(..., example=['drug']),
-        edge_type: List[str] = Body(..., example=['related_to']),
+        edge_type: List[str] = Body(..., example=['-related_to->']),
         target_type: List[str] = Body(..., example=['named_thing']),
         db=Depends(get_db),
 ):
