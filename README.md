@@ -2,9 +2,12 @@
 
 ## deployment
 
-### Python
+### local
 
-`uvicorn server:app --host 0.0.0.0 --port 4983`
+```bash
+pip install -r requirements.txt
+./main.sh
+```
 
 ### Docker
 

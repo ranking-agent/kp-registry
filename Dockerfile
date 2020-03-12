@@ -17,7 +17,8 @@ RUN pip install -r /home/murphy/requirements.txt --src /usr/local/src
 
 # install server
 ADD ./server.py /home/murphy/server.py
+ADD ./main.sh /home/murphy/main.sh
 
 # setup command
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "4983"]
+CMD ["/home/murphy/main.sh"]
 EXPOSE 4983
