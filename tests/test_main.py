@@ -3,7 +3,8 @@ import os
 
 from fastapi.testclient import TestClient
 
-from kp_registry.server import app, example
+from kp_registry.server import app
+from kp_registry.routers.kps import example
 
 client = TestClient(app)
 
