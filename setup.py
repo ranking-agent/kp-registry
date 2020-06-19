@@ -8,7 +8,7 @@ setup(
     author_email='patrick@covar.com',
     url='https://github.com/TranslatorIIPrototypes/kp_registry',
     description='Translator KP Registry',
-    packages=['kp_registry'],
+    packages=['kp_registry', 'kp_registry.routers'],
     include_package_data=True,
     zip_safe=False,
     license='MIT',
