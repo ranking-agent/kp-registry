@@ -4,9 +4,17 @@ import sqlite3
 from typing import Dict, List
 
 import aiosqlite
-from fastapi import Body, Depends, FastAPI, HTTPException
-from pydantic import AnyUrl, BaseModel
+from fastapi import Body, Depends, FastAPI, HTTPException, status
+from pydantic import AnyUrl, BaseModel, BaseSettings
 
+
+class Settings(BaseSettings):
+    """KP registry settings."""
+
+    db_uri: str = 'file:data/kps.db'
+
+
+settings = Settings()
 app = FastAPI(
     title='Knowledge Provider Registry',
     description='Registry of Translator knowledge providers',
@@ -24,7 +32,7 @@ class KP(BaseModel):
 
 async def get_db():
     """Get SQLite connection."""
-    async with aiosqlite.connect('data/kps.db') as db:
+    async with aiosqlite.connect(settings.db_uri) as db:
         yield db
 
 
@@ -79,7 +87,7 @@ async def get_knowledge_provider(
     } for row in rows]
 
 
-@app.post('/kps')
+@app.post('/kps', status_code=status.HTTP_201_CREATED)
 async def add_knowledge_provider(
         kps: Dict[AnyUrl, List[KP]] = Body(..., example=example),
         db=Depends(get_db),
@@ -111,7 +119,7 @@ async def add_knowledge_provider(
     await db.commit()
 
 
-@app.delete('/kps/{url:path}')
+@app.delete('/kps/{url:path}', status_code=status.HTTP_204_NO_CONTENT)
 async def remove_knowledge_provider(
         url: AnyUrl,
         db=Depends(get_db),
@@ -151,7 +159,7 @@ async def search_for_knowledge_providers(
     return [row[0] for row in results]
 
 
-@app.post('/clear')
+@app.post('/clear', status_code=status.HTTP_204_NO_CONTENT)
 async def clear_kps(
     db=Depends(get_db),
 ):
