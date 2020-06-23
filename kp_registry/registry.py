@@ -79,7 +79,7 @@ class Registry():
     async def add(self, kps):
         """Add KP(s)."""
         values = [
-            (url, kp.source_type, kp.edge_type, kp.target_type)
+            (url, kp['source_type'], kp['edge_type'], kp['target_type'])
             for url, kps in kps.items() for kp in kps
         ]
         # Insert rows of data
