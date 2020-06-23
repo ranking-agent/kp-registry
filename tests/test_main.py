@@ -27,12 +27,12 @@ def test_main():
     response = client.post('/kps', json=example)
     assert response.status_code == 400
 
-    # get all KPs (there are none)
+    # get all KPs (there is one)
     response = client.get('/kps')
     assert response.status_code == 200
     assert len(response.json()) == 1
 
-    # search for KPs
+    # search for KPs (find none)
     response = client.post('/search', json=dict(
         source_type=['disease'],
         edge_type=['association'],
@@ -40,6 +40,15 @@ def test_main():
     ))
     assert response.status_code == 200
     assert not response.json()
+
+    # search for KPs (find one)
+    response = client.post('/search', json=dict(
+        source_type=['disease'],
+        edge_type=['related to'],
+        target_type=['gene'],
+    ))
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 
     # delete KP
     response = client.delete(f'/kps/{list(example)[0]}')
