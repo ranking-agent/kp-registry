@@ -52,6 +52,7 @@ async def add_knowledge_provider(
         registry=Depends(get_registry),
 ):
     """Add a knowledge provider."""
+    kps = {key: [el.dict() for el in value] for key, value in kps.items()}
     await registry.add(kps)
 
 
