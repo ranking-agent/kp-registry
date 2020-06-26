@@ -76,7 +76,7 @@ class Registry():
             'target_type': row[2],
         } for row in rows]
 
-    async def add(self, kps):
+    async def add(self, **kps):
         """Add KP(s)."""
         values = [
             (url, kp['source_type'], kp['edge_type'], kp['target_type'])
