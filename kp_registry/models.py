@@ -8,3 +8,6 @@ class KP(BaseModel):
     source_type: str
     edge_type: str
     target_type: str
+
+    class Config:
+        extra = 'allow'

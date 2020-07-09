@@ -53,7 +53,7 @@ async def add_knowledge_provider(
 ):
     """Add a knowledge provider."""
     kps = {key: [el.dict() for el in value] for key, value in kps.items()}
-    await registry.add(kps)
+    await registry.add(**kps)
 
 
 @router.delete('/kps/{url:path}', status_code=status.HTTP_204_NO_CONTENT)
