@@ -1,10 +1,11 @@
 """KP registry."""
 from collections import defaultdict
+import json
 import logging
+import sqlite3
 
 import aiosqlite
 from fastapi import HTTPException
-import sqlite3
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class Registry():
     async def __aenter__(self):
         """Enter context."""
         self.db = await aiosqlite.connect(self.uri)
+        self.db.row_factory = sqlite3.Row
         await self.setup()
         return self
 
@@ -37,6 +39,7 @@ class Registry():
                 'source_type text, '
                 'edge_type text, '
                 'target_type text, '
+                'details text, '
                 'UNIQUE(url, source_type, edge_type, target_type) '
             ) + ')'
         )
@@ -52,16 +55,17 @@ class Registry():
         kps = defaultdict(list)
         for row in rows:
             kps[row[0]].append({
-                'source_type': row[1],
-                'edge_type': row[2],
-                'target_type': row[3],
+                'source_type': row['source_type'],
+                'edge_type': row['edge_type'],
+                'target_type': row['target_type'],
+                'details': json.loads(row['details']),
             })
         return kps
 
     async def get_one(self, url):
         """Get a specific KP."""
         statement = (
-            'SELECT source_type, edge_type, target_type '
+            'SELECT * '
             'FROM knowledge_providers '
             'WHERE url=?'
         )
@@ -71,21 +75,28 @@ class Registry():
         )
         rows = await cursor.fetchall()
         return [{
-            'source_type': row[0],
-            'edge_type': row[1],
-            'target_type': row[2],
+            'source_type': row['source_type'],
+            'edge_type': row['edge_type'],
+            'target_type': row['target_type'],
+            'details': json.loads(row['details']),
         } for row in rows]
 
     async def add(self, **kps):
         """Add KP(s)."""
         values = [
-            (url, kp['source_type'], kp['edge_type'], kp['target_type'])
+            (
+                url,
+                kp['source_type'],
+                kp['edge_type'],
+                kp['target_type'],
+                json.dumps(kp.get('details', {})),
+            )
             for url, kps in kps.items() for kp in kps
         ]
         # Insert rows of data
         try:
             await self.db.executemany(
-                'INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)',
+                'INSERT INTO knowledge_providers VALUES (?, ?, ?, ?, ?)',
                 values
             )
         except sqlite3.IntegrityError as err:
@@ -109,7 +120,7 @@ class Registry():
         edge_bindings = ', '.join('?' for _ in range(len(edge_type)))
         target_bindings = ', '.join('?' for _ in range(len(target_type)))
         statement = (
-            'SELECT DISTINCT url FROM knowledge_providers '
+            'SELECT DISTINCT url, details FROM knowledge_providers '
             f'WHERE source_type in ({source_bindings}) '
             f'AND edge_type in ({edge_bindings}) '
             f'AND target_type in ({target_bindings})'
@@ -120,7 +131,10 @@ class Registry():
         )
 
         results = await cursor.fetchall()
-        return [row[0] for row in results]
+        return {
+            row['url']: json.loads(row['details'])
+            for row in results
+        }
 
     async def delete_all(self):
         """Delete all KPs."""
