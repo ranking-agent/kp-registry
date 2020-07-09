@@ -16,7 +16,7 @@ ADD ./requirements.txt /home/murphy/requirements.txt
 RUN pip install -r /home/murphy/requirements.txt --src /usr/local/src
 
 # install server
-ADD ./server.py /home/murphy/server.py
+ADD ./kp_registry /home/murphy/kp_registry
 ADD ./main.sh /home/murphy/main.sh
 
 # setup command
