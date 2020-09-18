@@ -5,7 +5,6 @@ from typing import Dict, List
 
 import aiosqlite
 from fastapi import Body, Depends, HTTPException, APIRouter, status
-from pydantic import AnyUrl
 
 from ..models import KP
 from ..config import settings
@@ -21,11 +20,14 @@ async def get_registry():
 
 
 example = {
-    'http://my_kp_url': [{
-        'source_type': 'disease',
-        'edge_type': 'related to',
-        'target_type': 'gene',
-    }],
+    'my_kp': {
+        'url': 'http://my_kp_url',
+        'operations': [{
+            'source_type': 'disease',
+            'edge_type': 'related to',
+            'target_type': 'gene',
+        }],
+    }
 }
 
 
@@ -37,32 +39,32 @@ async def get_all_knowledge_providers(
     return await registry.get_all()
 
 
-@router.get('/kps/{url:path}')
+@router.get('/kps/{uid}')
 async def get_knowledge_provider(
-        url: AnyUrl,
+        uid: str,
         registry=Depends(get_registry),
 ):
     """Get a knowledge provider by url."""
-    return await registry.get_one(url)
+    return await registry.get_one(uid)
 
 
 @router.post('/kps', status_code=status.HTTP_201_CREATED)
 async def add_knowledge_provider(
-        kps: Dict[AnyUrl, List[KP]] = Body(..., example=example),
+        kps: Dict[str, KP] = Body(..., example=example),
         registry=Depends(get_registry),
 ):
     """Add a knowledge provider."""
-    kps = {key: [el.dict() for el in value] for key, value in kps.items()}
+    kps = {key: value.dict() for key, value in kps.items()}
     await registry.add(**kps)
 
 
-@router.delete('/kps/{url:path}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/kps/{uid}', status_code=status.HTTP_204_NO_CONTENT)
 async def remove_knowledge_provider(
-        url: AnyUrl,
+        uid: str,
         registry=Depends(get_registry),
 ):
     """Delete a knowledge provider."""
-    await registry.delete_one(url)
+    await registry.delete_one(uid)
 
 
 @router.post('/search')

@@ -35,68 +35,112 @@ class Registry():
         """Set up database table."""
         await self.db.execute(
             'CREATE TABLE IF NOT EXISTS knowledge_providers( ' + (
-                'url text, '
-                'source_type text, '
-                'edge_type text, '
-                'target_type text, '
-                'details text, '
-                'UNIQUE(url, source_type, edge_type, target_type) '
+                'id TEXT, '
+                'url TEXT, '
+                'details TEXT, '
+                'UNIQUE(id, url) '
+            ) + ')'
+        )
+        await self.db.execute(
+            'CREATE TABLE IF NOT EXISTS operations( ' + (
+                'kp TEXT, '
+                'source_type TEXT, '
+                'edge_type TEXT, '
+                'target_type TEXT, '
+                'UNIQUE(kp, source_type, edge_type, target_type) '
             ) + ')'
         )
         await self.db.commit()
 
     async def get_all(self):
         """Get all KPs."""
+        kps = dict()
         statement = 'SELECT * FROM knowledge_providers'
         cursor = await self.db.execute(
             statement,
         )
         rows = await cursor.fetchall()
-        kps = defaultdict(list)
         for row in rows:
-            kps[row[0]].append({
+            kps[row["id"]] = {
+                'url': row['url'],
+                'details': json.loads(row['details']),
+                'operations': [],
+            }
+        statement = 'SELECT * FROM operations'
+        cursor = await self.db.execute(
+            statement,
+        )
+        rows = await cursor.fetchall()
+        for row in rows:
+            kps[row["kp"]]["operations"].append({
                 'source_type': row['source_type'],
                 'edge_type': row['edge_type'],
                 'target_type': row['target_type'],
-                'details': json.loads(row['details']),
             })
         return kps
 
-    async def get_one(self, url):
+    async def get_one(self, uid):
         """Get a specific KP."""
         statement = (
             'SELECT * '
             'FROM knowledge_providers '
-            'WHERE url=?'
+            'WHERE id=?'
         )
         cursor = await self.db.execute(
             statement,
-            (str(url),),
+            (str(uid),),
+        )
+        kp = await cursor.fetchone()
+        statement = (
+            'SELECT * '
+            'FROM operations '
+            'WHERE kp=?'
+        )
+        cursor = await self.db.execute(
+            statement,
+            (kp["id"],),
         )
         rows = await cursor.fetchall()
         return [{
             'source_type': row['source_type'],
             'edge_type': row['edge_type'],
             'target_type': row['target_type'],
-            'details': json.loads(row['details']),
+            'details': json.loads(kp['details']),
         } for row in rows]
 
     async def add(self, **kps):
         """Add KP(s)."""
         values = [
             (
-                url,
-                kp['source_type'],
-                kp['edge_type'],
-                kp['target_type'],
+                uid,
+                kp['url'],
                 json.dumps(kp.get('details', {})),
             )
-            for url, kps in kps.items() for kp in kps
+            for uid, kp in kps.items()
         ]
         # Insert rows of data
         try:
             await self.db.executemany(
-                'INSERT INTO knowledge_providers VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO knowledge_providers VALUES (?, ?, ?)',
+                values
+            )
+        except sqlite3.IntegrityError as err:
+            if 'UNIQUE constraint failed' in str(err):
+                raise HTTPException(400, 'KP already exists')
+            raise err
+        values = [
+            (
+                uid,
+                op['source_type'],
+                op['edge_type'],
+                op['target_type'],
+            )
+            for uid, kp in kps.items() for op in kp["operations"]
+        ]
+        # Insert rows of data
+        try:
+            await self.db.executemany(
+                'INSERT INTO operations VALUES (?, ?, ?, ?)',
                 values
             )
         except sqlite3.IntegrityError as err:
@@ -105,12 +149,17 @@ class Registry():
             raise err
         await self.db.commit()
 
-    async def delete_one(self, url):
+    async def delete_one(self, uid):
         """Delete a specific KP."""
         await self.db.execute(
             'DELETE FROM knowledge_providers '
-            'WHERE url=?',
-            (url,),
+            'WHERE id=?',
+            (uid,),
+        )
+        await self.db.execute(
+            'DELETE FROM operations '
+            'WHERE kp=?',
+            (uid,),
         )
         await self.db.commit()
 
@@ -120,10 +169,12 @@ class Registry():
         edge_bindings = ', '.join('?' for _ in range(len(edge_type)))
         target_bindings = ', '.join('?' for _ in range(len(target_type)))
         statement = (
-            'SELECT DISTINCT url, details FROM knowledge_providers '
+            'SELECT DISTINCT id, url, details FROM operations '
+            'JOIN knowledge_providers '
+            'ON knowledge_providers.id = operations.kp '
             f'WHERE source_type in ({source_bindings}) '
             f'AND edge_type in ({edge_bindings}) '
-            f'AND target_type in ({target_bindings})'
+            f'AND target_type in ({target_bindings}) '
         )
         cursor = await self.db.execute(
             statement,
@@ -132,7 +183,10 @@ class Registry():
 
         results = await cursor.fetchall()
         return {
-            row['url']: json.loads(row['details'])
+            row['id']: {
+                'url': row['url'],
+                **json.loads(row['details']),
+            }
             for row in results
         }
 
@@ -140,5 +194,8 @@ class Registry():
         """Delete all KPs."""
         await self.db.execute(
             'DELETE FROM knowledge_providers',
+        )
+        await self.db.execute(
+            'DELETE FROM operations',
         )
         await self.db.commit()
