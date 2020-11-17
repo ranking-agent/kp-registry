@@ -1,5 +1,5 @@
 """Models for KP registry."""
-from typing import List
+from typing import Any, Dict, List
 
 from pydantic import AnyUrl, BaseModel
 
@@ -20,6 +20,7 @@ class KP(BaseModel):
 
     url: AnyUrl
     operations: List[Operation]
+    details: Dict[str, Any] = {}
 
     class Config:
         extra = 'allow'

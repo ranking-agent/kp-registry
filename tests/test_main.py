@@ -1,6 +1,4 @@
 """Test KP registry."""
-import os
-
 from fastapi.testclient import TestClient
 
 from kp_registry.server import app
@@ -34,18 +32,18 @@ def test_main():
 
     # search for KPs (find none)
     response = client.post('/search', json=dict(
-        source_type=['disease'],
-        edge_type=['association'],
-        target_type=['gene'],
+        source_type=['biolink:Disease'],
+        edge_type=['-biolink:association->'],
+        target_type=['biolink:Gene'],
     ))
     assert response.status_code == 200
     assert not response.json()
 
     # search for KPs (find one)
     response = client.post('/search', json=dict(
-        source_type=['disease'],
-        edge_type=['related to'],
-        target_type=['gene'],
+        source_type=['biolink:Disease'],
+        edge_type=['-biolink:related_to->'],
+        target_type=['biolink:Gene'],
     ))
     assert response.status_code == 200
     assert len(response.json()) == 1
