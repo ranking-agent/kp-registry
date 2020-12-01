@@ -1,5 +1,8 @@
 FROM python:3.8.1-buster
 
+# Add Container Info
+LABEL org.opencontainers.image.source https://github.com/ranking-agent/kp_registry
+
 # install basic tools
 RUN apt-get update
 RUN apt-get install -yq \
