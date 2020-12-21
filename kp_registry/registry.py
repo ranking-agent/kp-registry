@@ -182,9 +182,13 @@ class Registry():
     ):
         """Search for KPs matching a pattern."""
         statement = (
-            'SELECT DISTINCT id, url, details FROM operations '
-            'JOIN knowledge_providers '
-            'ON knowledge_providers.id = operations.kp'
+            """
+            SELECT knowledge_providers.id, knowledge_providers.url, knowledge_providers.details,
+            operations.source_type, operations.target_type, operations.edge_type
+            FROM operations
+            JOIN knowledge_providers
+            ON knowledge_providers.id = operations.kp
+            """
         )
         conditions = []
         values = []
@@ -211,13 +215,22 @@ class Registry():
         )
 
         results = await cursor.fetchall()
-        return {
-            row['id']: {
-                'url': row['url'],
-                **json.loads(row['details']),
-            }
-            for row in results
-        }
+        kps_with_ops = {}
+        for row in results:
+            kp_name = row['id']
+            if kp_name not in kps_with_ops:
+                kps_with_ops[kp_name] = {
+                    'url': row['url'],
+                    **json.loads(row['details']),
+                    'operations': []
+                }
+            # Append to operations list
+            kps_with_ops[kp_name]['operations'].append({
+                'source_type': row['source_type'],
+                'target_type': row['target_type'],
+                'edge_type': row['edge_type']
+            })
+        return kps_with_ops
 
     async def delete_all(self):
         """Delete all KPs."""

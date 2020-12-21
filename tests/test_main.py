@@ -48,6 +48,9 @@ def test_main():
     assert response.status_code == 200
     assert len(response.json()) == 1
 
+    # Check that the response includes operations
+    assert len(response.json()['my_kp']['operations']) == 1
+
     # delete KP
     response = client.delete(f'/kps/{list(example)[0]}')
     assert response.status_code == 204

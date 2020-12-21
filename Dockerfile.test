@@ -1,0 +1,17 @@
+FROM python:3.8.1-buster
+
+WORKDIR /app
+
+# install requirements
+ADD requirements.txt .
+RUN pip install -r requirements.txt
+
+# Install test requirements
+ADD requirements-test.txt .
+RUN pip install -r requirements-test.txt
+
+# add code
+ADD . .
+
+# setup command
+CMD pytest
