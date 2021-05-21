@@ -47,7 +47,7 @@ def registry_router(db_uri=settings.db_uri):
     async def search_for_knowledge_providers(
             operation: Search = Body(..., example={
                 "source_type": ["biolink:ChemicalSubstance"],
-                "edge_type": ["biolink:treats"],
+                "edge_type": ["-biolink:treats->"],
                 "target_type": ["biolink:Disease"],
             }),
             registry=Depends(get_registry),
@@ -162,7 +162,21 @@ def registry_router(db_uri=settings.db_uri):
             try:
                 kps[endpoint["title"]] = {
                     "url": endpoint["url"],
-                    "operations": meta_kg["edges"],
+                    "operations": [
+                        {
+                            "source_type": edge["subject"],
+                            "edge_type": "-{}->".format(edge["predicate"]),
+                            "target_type": edge["object"],
+                        }
+                        for edge in meta_kg["edges"]
+                    ] + [
+                        {
+                            "source_type": edge["object"],
+                            "edge_type": "<-{}-".format(edge["predicate"]),
+                            "target_type": edge["subject"],
+                        }
+                        for edge in meta_kg["edges"]
+                    ],
                     "details": {"preferred_prefixes": {
                         category: value["id_prefixes"]
                         for category, value in meta_kg["nodes"].items()

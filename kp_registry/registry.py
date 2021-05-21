@@ -143,9 +143,9 @@ class Registry():
         values = [
             (
                 uid,
-                op['subject'],
-                op['predicate'],
-                op['object'],
+                op['source_type'],
+                op['edge_type'],
+                op['target_type'],
             )
             for uid, kp in kps.items() for op in kp["operations"]
         ]

@@ -111,7 +111,7 @@ async def test_main(client):
     # search for KPs (find one)
     response = await client.post('/search', json=dict(
         source_type=['biolink:ChemicalSubstance'],
-        edge_type=['biolink:treats'],
+        edge_type=['-biolink:treats->'],
         target_type=['biolink:Disease'],
     ))
     assert response.status_code == 200
