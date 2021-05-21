@@ -163,7 +163,7 @@ def registry_router(db_uri=settings.db_uri):
         for endpoint, meta_kg in meta_kgs:
             try:
                 kps[endpoint["title"]] = {
-                    "url": endpoint["url"],
+                    "url": endpoint["url"] + "/query",
                     "operations": [
                         {
                             "source_type": edge["subject"],
