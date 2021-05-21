@@ -137,8 +137,7 @@ def registry_router(db_uri=settings.db_uri):
                 )
                 continue
             try:
-                # validate /meta_knowledge_graph response.
-                MetaKnowledgeGraph(**response.json())
+                meta_kg = response.json()
             except json.decoder.JSONDecodeError as err:
                 LOGGER.warning(
                     "Error decoding /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
@@ -147,6 +146,9 @@ def registry_router(db_uri=settings.db_uri):
                     response.text,
                 )
                 continue
+            try:
+                # validate /meta_knowledge_graph response.
+                MetaKnowledgeGraph.parse_obj(meta_kg)
             except pydantic.ValidationError as err:
                 LOGGER.warning(
                     "Failed to validate /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
