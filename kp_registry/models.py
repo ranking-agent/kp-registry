@@ -1,25 +1,13 @@
 """Models for KP registry."""
-from typing import List
-
-from pydantic import AnyUrl, BaseModel
+from pydantic import BaseModel
 
 
-class Operation(BaseModel):
-    """Operation."""
+class Search(BaseModel):
+    """Search."""
 
-    source_type: str
-    edge_type: str
-    target_type: str
-
-    class Config:
-        extra = 'allow'
-
-
-class KP(BaseModel):
-    """Knowledge provider."""
-
-    url: AnyUrl
-    operations: List[Operation]
+    source_type: list[str]
+    edge_type: list[str]
+    target_type: list[str]
 
     class Config:
         extra = 'allow'

@@ -1,8 +1,8 @@
 """KP registry."""
-from collections import defaultdict
 import json
 import logging
 import sqlite3
+from typing import Union
 
 import aiosqlite
 from fastapi import HTTPException
@@ -13,23 +13,33 @@ LOGGER = logging.getLogger(__name__)
 class Registry():
     """KP registry."""
 
-    def __init__(self, uri):
+    def __init__(
+            self,
+            arg: Union[str, aiosqlite.Connection],
+    ):
         """Initialize."""
+        self.uri = None
         self.db = None
-        self.uri = uri
+        if isinstance(arg, str):
+            self.uri = arg
+        else:
+            self.db = arg
+            self.db.row_factory = sqlite3.Row
 
     async def __aenter__(self):
         """Enter context."""
-        self.db = await aiosqlite.connect(self.uri)
-        self.db.row_factory = sqlite3.Row
+        if self.db is None:
+            self.db = await aiosqlite.connect(self.uri)
+            self.db.row_factory = sqlite3.Row
         await self.setup()
         return self
 
     async def __aexit__(self, *args):
         """Exit context."""
-        tmp_db = self.db
-        self.db = None
-        await tmp_db.close()
+        if self.uri is not None:
+            tmp_db = self.db
+            self.db = None
+            await tmp_db.close()
 
     async def setup(self):
         """Set up database table."""
@@ -91,6 +101,8 @@ class Registry():
             (str(uid),),
         )
         kp = await cursor.fetchone()
+        if kp is None:
+            raise HTTPException(404)
         statement = (
             'SELECT * '
             'FROM operations '
@@ -149,46 +161,64 @@ class Registry():
             raise err
         await self.db.commit()
 
-    async def delete_one(self, uid):
-        """Delete a specific KP."""
-        await self.db.execute(
-            'DELETE FROM knowledge_providers '
-            'WHERE id=?',
-            (uid,),
-        )
-        await self.db.execute(
-            'DELETE FROM operations '
-            'WHERE kp=?',
-            (uid,),
-        )
-        await self.db.commit()
-
-    async def search(self, source_type, edge_type, target_type):
+    async def search(
+            self,
+            source_type,
+            edge_type,
+            target_type,
+            **kwargs,
+    ):
         """Search for KPs matching a pattern."""
-        source_bindings = ', '.join('?' for _ in range(len(source_type)))
-        edge_bindings = ', '.join('?' for _ in range(len(edge_type)))
-        target_bindings = ', '.join('?' for _ in range(len(target_type)))
         statement = (
-            'SELECT DISTINCT id, url, details FROM operations '
-            'JOIN knowledge_providers '
-            'ON knowledge_providers.id = operations.kp '
-            f'WHERE source_type in ({source_bindings}) '
-            f'AND edge_type in ({edge_bindings}) '
-            f'AND target_type in ({target_bindings}) '
+            """
+            SELECT knowledge_providers.id, knowledge_providers.url, knowledge_providers.details,
+            operations.source_type, operations.target_type, operations.edge_type
+            FROM operations
+            JOIN knowledge_providers
+            ON knowledge_providers.id = operations.kp
+            """
         )
+        conditions = []
+        values = []
+        if source_type:
+            conditions.append("source_type in ({0})".format(
+                ", ".join("?" for _ in source_type)
+            ))
+            values.extend(list(source_type))
+        if edge_type:
+            conditions.append("edge_type in ({0})".format(
+                ", ".join("?" for _ in edge_type)
+            ))
+            values.extend(list(edge_type))
+        if target_type:
+            conditions.append("target_type in ({0})".format(
+                ", ".join("?" for _ in target_type)
+            ))
+            values.extend(list(target_type))
+        if conditions:
+            statement += " WHERE " + " AND ".join(conditions)
         cursor = await self.db.execute(
             statement,
-            list(source_type) + list(edge_type) + list(target_type)
+            values,
         )
 
         results = await cursor.fetchall()
-        return {
-            row['id']: {
-                'url': row['url'],
-                **json.loads(row['details']),
-            }
-            for row in results
-        }
+        kps_with_ops = {}
+        for row in results:
+            kp_name = row['id']
+            if kp_name not in kps_with_ops:
+                kps_with_ops[kp_name] = {
+                    'url': row['url'],
+                    **json.loads(row['details']),
+                    'operations': []
+                }
+            # Append to operations list
+            kps_with_ops[kp_name]['operations'].append({
+                'source_type': row['source_type'],
+                'target_type': row['target_type'],
+                'edge_type': row['edge_type']
+            })
+        return kps_with_ops
 
     async def delete_all(self):
         """Delete all KPs."""

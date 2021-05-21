@@ -1,24 +1,21 @@
-FROM python:3.8.1-buster
+FROM python:3.9.1-buster
 
-# install basic tools
-RUN apt-get update
-RUN apt-get install -yq \
-    vim
+# add Container Info
+LABEL org.opencontainers.image.source https://github.com/ranking-agent/kp_registry
 
-# set up murphy
-RUN mkdir /home/murphy
-ENV HOME=/home/murphy
-ENV USER=murphy
-WORKDIR /home/murphy
+# mkdir
+RUN mkdir /app
+WORKDIR /app
 
 # install requirements
-ADD ./requirements.txt /home/murphy/requirements.txt
-RUN pip install -r /home/murphy/requirements.txt --src /usr/local/src
+ADD ./requirements.txt ./requirements.txt
+RUN pip install -r requirements.txt
 
 # install server
-ADD ./kp_registry /home/murphy/kp_registry
-ADD ./main.sh /home/murphy/main.sh
+ADD ./kp_registry ./kp_registry
+ADD ./main.sh ./main.sh
 
 # setup command
-CMD ["/home/murphy/main.sh"]
+RUN mkdir data
+ENTRYPOINT ["./main.sh"]
 EXPOSE 4983
