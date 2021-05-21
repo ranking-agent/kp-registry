@@ -1,56 +1,118 @@
 """Test KP registry."""
-from fastapi.testclient import TestClient
+"""Test the server."""
+from contextlib import asynccontextmanager, AsyncExitStack
+from functools import partial, wraps
+from typing import Callable
 
-from kp_registry.server import app
-from kp_registry.routers.kps import example
+from asgiar import ASGIAR
+from fastapi import FastAPI, Request
+import httpx
+import pytest
 
-client = TestClient(app)
+from kp_registry.server import app as APP
 
 
-def test_main():
+def with_context(context, *args_, **kwargs_):
+    """Turn context manager into decorator."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            async with context(*args_, **kwargs_):
+                await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+@asynccontextmanager
+async def function_overlay(host: str, fcn: Callable):
+    """Apply an ASGIAR overlay that runs `fcn` for all routes."""
+    async with AsyncExitStack() as stack:
+        app = FastAPI()
+
+        # pylint: disable=unused-variable disable=unused-argument
+        @app.api_route(
+            "/{path:path}",
+            methods=["GET", "POST", "PUT", "DELETE"],
+        )
+        async def all_paths(path: str, request: Request):
+            return fcn(request)
+
+        await stack.enter_async_context(
+            ASGIAR(app, host=host)
+        )
+        yield
+
+
+with_function_overlay = partial(with_context, function_overlay)
+
+
+@pytest.fixture
+async def client():
+    """Create and teardown async httpx client."""
+    async with httpx.AsyncClient(app=APP, base_url="http://test") as client:
+        yield client
+
+
+@pytest.mark.asyncio
+@with_function_overlay(
+    "smart-api.info",
+    lambda request: {
+        "hits": [
+            {
+                "_id": "123abc",
+                "servers": [{"url": "http://test-kp"}],
+                "info": {
+                    "title": "Test KP",
+                    "x-trapi": {
+                        "version": "1.1.0",
+                        "operations": [
+                            "lookup"
+                        ]
+                    }
+                },
+                "paths": {
+                    "/meta_knowledge_graph": {}
+                }
+            }
+        ]
+    },
+)
+@with_function_overlay(
+    "test-kp",
+    lambda request: {
+        "nodes": {
+            "biolink:ChemicalSubstance": {"id_prefixes": ["CHEBI", "PUBCHEM.COMPOUND"]}
+        },
+        "edges": [
+            {
+                "subject": "biolink:ChemicalSubstance",
+                "predicate": "biolink:treats",
+                "object": "biolink:Disease"
+            }
+        ]
+    },
+)
+async def test_main(client):
     """Test KP registry."""
-    # clear all KPs
-    response = client.post('/clear')
-    assert response.status_code == 204
-
-    # add KP
-    response = client.post('/kps', json=example)
-    assert response.status_code == 201
-
-    # get KP
-    response = client.get(f'/kps/{list(example)[0]}')
-    assert response.status_code == 200
-
-    # try to add KP again (you cannot)
-    response = client.post('/kps', json=example)
-    assert response.status_code == 400
+    # refresh KPs
+    response = await client.post(f'/refresh')
+    assert response.status_code == 202
 
     # get all KPs (there is one)
-    response = client.get('/kps')
+    response = await client.get('/kps')
     assert response.status_code == 200
     assert len(response.json()) == 1
+    print(response.json())
 
-    # search for KPs (find none)
-    response = client.post('/search', json=dict(
-        source_type=['biolink:Disease'],
-        edge_type=['-biolink:association->'],
-        target_type=['biolink:Gene'],
-    ))
+    # get KP
+    response = await client.get(f'/kps/Test%20KP')
     assert response.status_code == 200
-    assert not response.json()
 
     # search for KPs (find one)
-    response = client.post('/search', json=dict(
-        source_type=['biolink:Disease'],
-        edge_type=['-biolink:related_to->'],
-        target_type=['biolink:Gene'],
+    response = await client.post('/search', json=dict(
+        source_type=['biolink:ChemicalSubstance'],
+        edge_type=['biolink:treats'],
+        target_type=['biolink:Disease'],
     ))
     assert response.status_code == 200
     assert len(response.json()) == 1
-
-    # Check that the response includes operations
-    assert len(response.json()['my_kp']['operations']) == 1
-
-    # delete KP
-    response = client.delete(f'/kps/{list(example)[0]}')
-    assert response.status_code == 204
