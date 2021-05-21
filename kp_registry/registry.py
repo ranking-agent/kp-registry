@@ -101,6 +101,8 @@ class Registry():
             (str(uid),),
         )
         kp = await cursor.fetchone()
+        if kp is None:
+            raise HTTPException(404)
         statement = (
             'SELECT * '
             'FROM operations '
@@ -141,9 +143,9 @@ class Registry():
         values = [
             (
                 uid,
-                op['source_type'],
-                op['edge_type'],
-                op['target_type'],
+                op['subject'],
+                op['predicate'],
+                op['object'],
             )
             for uid, kp in kps.items() for op in kp["operations"]
         ]
@@ -157,20 +159,6 @@ class Registry():
             if 'UNIQUE constraint failed' in str(err):
                 raise HTTPException(400, 'KP already exists')
             raise err
-        await self.db.commit()
-
-    async def delete_one(self, uid):
-        """Delete a specific KP."""
-        await self.db.execute(
-            'DELETE FROM knowledge_providers '
-            'WHERE id=?',
-            (uid,),
-        )
-        await self.db.execute(
-            'DELETE FROM operations '
-            'WHERE kp=?',
-            (uid,),
-        )
         await self.db.commit()
 
     async def search(
