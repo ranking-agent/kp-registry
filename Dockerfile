@@ -5,17 +5,17 @@ LABEL org.opencontainers.image.source https://github.com/ranking-agent/kp_regist
 
 # mkdir
 RUN mkdir /app
+WORKDIR /app
 
 # install requirements
-ADD ./requirements.txt /app/requirements.txt
-RUN pip install -r /app/requirements.txt
+ADD ./requirements.txt ./requirements.txt
+RUN pip install -r requirements.txt
 
 # install server
-ADD ./kp_registry /app/kp_registry
-ADD ./main.sh /app/main.sh
+ADD ./kp_registry ./kp_registry
+ADD ./main.sh ./main.sh
 
 # setup command
-RUN mkdir /app/data
-WORKDIR /app
-CMD ["/app/main.sh"]
+RUN mkdir data
+ENTRYPOINT ["./main.sh"]
 EXPOSE 4983
