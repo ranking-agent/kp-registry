@@ -62,7 +62,7 @@ def registry_router(db_uri=settings.db_uri):
     async def load_from_smartapi():
         """Load KP definitions from SmartAPI."""
         async with httpx.AsyncClient() as client:
-            response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%2AKP")
+            response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
         response.raise_for_status()
         registrations = response.json()
         endpoints = []
