@@ -69,17 +69,25 @@ def registry_router(db_uri=settings.db_uri):
         for hit in registrations["hits"]:
             _id = hit["_id"]
             try:
-                url = hit["servers"][0]["url"]
-            except (KeyError, IndexError):
-                LOGGER.warning(
-                    "No servers[0].url for https://smart-api.info/registry?q=%s",
-                    _id,
-                )
-                continue
-            try:
                 title = hit["info"]["title"]
             except KeyError:
                 title = _id
+            try:
+                component = hit["info"]["x-translator"]["component"]
+            except KeyError:
+                LOGGER.warning(
+                    "No x-translator.component for %s (https://smart-api.info/registry?q=%s)",
+                    title,
+                    _id,
+                )
+                continue
+            if component != "KP":
+                LOGGER.info(
+                    "component != KP for %s (https://smart-api.info/registry?q=%s)",
+                    title,
+                    _id,
+                )
+                continue
             try:
                 version = hit["info"]["x-trapi"]["version"]
             except KeyError:
@@ -90,7 +98,7 @@ def registry_router(db_uri=settings.db_uri):
                 )
                 continue
             if not version.startswith("1.1."):
-                LOGGER.warning(
+                LOGGER.info(
                     "TRAPI version != 1.1.x for %s (https://smart-api.info/registry?q=%s)",
                     title,
                     _id,
@@ -101,7 +109,24 @@ def registry_router(db_uri=settings.db_uri):
             except KeyError:
                 operations = None
             paths = list(hit["paths"].keys())
-            prefix = next(path for path in paths if path.endswith("/meta_knowledge_graph"))[:-21]
+            try:
+                prefix = next(path for path in paths if path.endswith("/meta_knowledge_graph"))[:-21]
+            except StopIteration:
+                LOGGER.warning(
+                    "No /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s)",
+                    title,
+                    _id,
+                )
+                continue
+            try:
+                url = hit["servers"][0]["url"]
+            except (KeyError, IndexError):
+                LOGGER.warning(
+                    "No servers[0].url for %s (https://smart-api.info/registry?q=%s)",
+                    title,
+                    _id,
+                )
+                continue
             url += prefix
             endpoints.append({
                 "_id": _id,
