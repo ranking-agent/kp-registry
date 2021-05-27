@@ -71,22 +71,7 @@ class Registry():
         )
         rows = await cursor.fetchall()
         for row in rows:
-            kps[row["id"]] = {
-                'url': row['url'],
-                'details': json.loads(row['details']),
-                'operations': [],
-            }
-        statement = 'SELECT * FROM operations'
-        cursor = await self.db.execute(
-            statement,
-        )
-        rows = await cursor.fetchall()
-        for row in rows:
-            kps[row["kp"]]["operations"].append({
-                'source_type': row['source_type'],
-                'edge_type': row['edge_type'],
-                'target_type': row['target_type'],
-            })
+            kps[row["id"]] = row["url"]
         return kps
 
     async def get_one(self, uid):
@@ -113,12 +98,14 @@ class Registry():
             (kp["id"],),
         )
         rows = await cursor.fetchall()
-        return [{
-            'source_type': row['source_type'],
-            'edge_type': row['edge_type'],
-            'target_type': row['target_type'],
-            'details': json.loads(kp['details']),
-        } for row in rows]
+        return {
+            **json.loads(kp["details"]),
+            "operations": [{
+                "source_type": row["source_type"],
+                "edge_type": row["edge_type"],
+                "target_type": row["target_type"],
+            } for row in rows]
+        }
 
     async def add(self, **kps):
         """Add KP(s)."""
