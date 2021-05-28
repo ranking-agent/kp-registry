@@ -196,7 +196,6 @@ class Registry():
             if kp_name not in kps_with_ops:
                 kps_with_ops[kp_name] = {
                     'url': row['url'],
-                    **json.loads(row['details']),
                     'operations': []
                 }
             # Append to operations list
