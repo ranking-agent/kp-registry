@@ -63,6 +63,9 @@ async def client():
                 "servers": [{"url": "http://test-kp"}],
                 "info": {
                     "title": "Test KP",
+                    "x-translator": {
+                        "component": "KP"
+                    },
                     "x-trapi": {
                         "version": "1.1.0",
                         "operations": [
