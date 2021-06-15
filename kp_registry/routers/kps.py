@@ -23,7 +23,7 @@ def registry_router(db_uri=settings.db_uri):
     """Generate registry router."""
     router = APIRouter()
 
-    async def get_registry():
+    async def get_registry() -> Registry:
         """Get KP registry."""
         async with Registry(settings.db_uri) as registry:
             yield registry
@@ -50,7 +50,7 @@ def registry_router(db_uri=settings.db_uri):
                 "predicate": ["biolink:treats"],
                 "object_category": ["biolink:Disease"],
             }),
-            registry=Depends(get_registry),
+            registry: Registry = Depends(get_registry),
     ):
         """Search for knowledge providers matching a specification."""
         return await registry.search(
