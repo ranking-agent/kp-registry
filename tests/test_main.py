@@ -149,9 +149,9 @@ async def test_main(client):
 
     # search for KPs (find one)
     response = await client.post('/search', json=dict(
-        source_type=['biolink:ChemicalSubstance'],
-        edge_type=['-biolink:treats->'],
-        target_type=['biolink:Disease'],
+        subject_category=['biolink:ChemicalSubstance'],
+        predicate=['biolink:treats'],
+        object_category=['biolink:Disease'],
     ))
     assert response.status_code == 200
     assert len(response.json()) == 1
