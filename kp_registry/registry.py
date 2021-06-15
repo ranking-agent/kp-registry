@@ -54,10 +54,10 @@ class Registry():
         await self.db.execute(
             'CREATE TABLE IF NOT EXISTS operations( ' + (
                 'kp TEXT, '
-                'source_type TEXT, '
-                'edge_type TEXT, '
-                'target_type TEXT, '
-                'UNIQUE(kp, source_type, edge_type, target_type) '
+                'subject_category TEXT, '
+                'predicate TEXT, '
+                'object_category TEXT, '
+                'UNIQUE(kp, subject_category, predicate, object_category) '
             ) + ')'
         )
         await self.db.commit()
@@ -101,9 +101,9 @@ class Registry():
         return {
             **json.loads(kp["details"]),
             "operations": [{
-                "source_type": row["source_type"],
-                "edge_type": row["edge_type"],
-                "target_type": row["target_type"],
+                "subject_category": row["subject_category"],
+                "predicate": row["predicate"],
+                "object_category": row["object_category"],
             } for row in rows]
         }
 
@@ -130,9 +130,9 @@ class Registry():
         values = [
             (
                 uid,
-                op['source_type'],
-                op['edge_type'],
-                op['target_type'],
+                op['subject_category'],
+                op['predicate'],
+                op['object_category'],
             )
             for uid, kp in kps.items() for op in kp["operations"]
         ]
@@ -150,16 +150,16 @@ class Registry():
 
     async def search(
             self,
-            source_type,
-            edge_type,
-            target_type,
+            subject_category,
+            predicate,
+            object_category,
             **kwargs,
     ):
         """Search for KPs matching a pattern."""
         statement = (
             """
             SELECT knowledge_providers.id, knowledge_providers.url, knowledge_providers.details,
-            operations.source_type, operations.target_type, operations.edge_type
+            operations.subject_category, operations.object_category, operations.predicate
             FROM operations
             JOIN knowledge_providers
             ON knowledge_providers.id = operations.kp
@@ -167,21 +167,21 @@ class Registry():
         )
         conditions = []
         values = []
-        if source_type:
-            conditions.append("source_type in ({0})".format(
-                ", ".join("?" for _ in source_type)
+        if subject_category:
+            conditions.append("subject_category in ({0})".format(
+                ", ".join("?" for _ in subject_category)
             ))
-            values.extend(list(source_type))
-        if edge_type:
-            conditions.append("edge_type in ({0})".format(
-                ", ".join("?" for _ in edge_type)
+            values.extend(list(subject_category))
+        if predicate:
+            conditions.append("predicate in ({0})".format(
+                ", ".join("?" for _ in predicate)
             ))
-            values.extend(list(edge_type))
-        if target_type:
-            conditions.append("target_type in ({0})".format(
-                ", ".join("?" for _ in target_type)
+            values.extend(list(predicate))
+        if object_category:
+            conditions.append("object_category in ({0})".format(
+                ", ".join("?" for _ in object_category)
             ))
-            values.extend(list(target_type))
+            values.extend(list(object_category))
         if conditions:
             statement += " WHERE " + " AND ".join(conditions)
         cursor = await self.db.execute(
@@ -200,9 +200,9 @@ class Registry():
                 }
             # Append to operations list
             kps_with_ops[kp_name]['operations'].append({
-                'source_type': row['source_type'],
-                'target_type': row['target_type'],
-                'edge_type': row['edge_type']
+                'subject_category': row['subject_category'],
+                'object_category': row['object_category'],
+                'predicate': row['predicate']
             })
         return kps_with_ops
 
