@@ -5,9 +5,9 @@ from pydantic import BaseModel
 class Search(BaseModel):
     """Search."""
 
-    source_type: list[str]
-    edge_type: list[str]
-    target_type: list[str]
+    subject_category: list[str]
+    predicate: list[str]
+    object_category: list[str]
 
     class Config:
         extra = 'allow'

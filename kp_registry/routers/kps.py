@@ -46,17 +46,17 @@ def registry_router(db_uri=settings.db_uri):
     @router.post('/search')
     async def search_for_knowledge_providers(
             operation: Search = Body(..., example={
-                "source_type": ["biolink:ChemicalSubstance"],
-                "edge_type": ["-biolink:treats->"],
-                "target_type": ["biolink:Disease"],
+                "subject_category": ["biolink:ChemicalSubstance"],
+                "predicate": ["biolink:treats"],
+                "object_category": ["biolink:Disease"],
             }),
             registry=Depends(get_registry),
     ):
         """Search for knowledge providers matching a specification."""
         return await registry.search(
-            operation.source_type,
-            operation.edge_type,
-            operation.target_type,
+            operation.subject_category,
+            operation.predicate,
+            operation.object_category,
         )
 
     async def load_from_smartapi():
@@ -191,16 +191,9 @@ def registry_router(db_uri=settings.db_uri):
                     "url": endpoint["url"] + "/query",
                     "operations": [
                         {
-                            "source_type": edge["subject"],
-                            "edge_type": "-{}->".format(edge["predicate"]),
-                            "target_type": edge["object"],
-                        }
-                        for edge in meta_kg["edges"]
-                    ] + [
-                        {
-                            "source_type": edge["object"],
-                            "edge_type": "<-{}-".format(edge["predicate"]),
-                            "target_type": edge["subject"],
+                            "subject_category": edge["subject"],
+                            "predicate": edge["predicate"],
+                            "object_category": edge["object"],
                         }
                         for edge in meta_kg["edges"]
                     ],
