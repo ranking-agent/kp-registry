@@ -79,6 +79,25 @@ async def client():
                 "paths": {
                     "/meta_knowledge_graph": {}
                 }
+            },
+            {
+                "_id": "456def",
+                "servers": [{"url": "http://test-kp-2"}],
+                "info": {
+                    "title": "Test KP 2",
+                    "x-translator": {
+                        "component": "KP"
+                    },
+                    "x-trapi": {
+                        "version": "1.1.0",
+                        "operations": [
+                            "lookup"
+                        ]
+                    }
+                },
+                "paths": {
+                    "/meta_knowledge_graph": {}
+                }
             }
         ]
     },
@@ -98,6 +117,21 @@ async def client():
         ]
     },
 )
+@with_function_overlay(
+    "test-kp-2",
+    lambda request: {
+        "nodes": {
+            "biolink:ChemicalSubstance": {"id_prefixes": ["CHEBI", "PUBCHEM.COMPOUND"]}
+        },
+        "edges": [
+            {
+                "subject": "biolink:Gene",
+                "predicate": "biolink:correlated_with",
+                "object": "biolink:Disease"
+            }
+        ]
+    },
+)
 async def test_main(client):
     """Test KP registry."""
     # refresh KPs
@@ -107,8 +141,7 @@ async def test_main(client):
     # get all KPs (there is one)
     response = await client.get('/kps')
     assert response.status_code == 200
-    assert len(response.json()) == 1
-    print(response.json())
+    assert len(response.json()) == 2
 
     # get KP
     response = await client.get(f'/kps/Test%20KP')
