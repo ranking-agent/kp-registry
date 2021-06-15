@@ -1,5 +1,4 @@
 """Test KP registry."""
-"""Test the server."""
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial, wraps
 import os
