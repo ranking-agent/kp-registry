@@ -2,6 +2,7 @@
 """Test the server."""
 from contextlib import asynccontextmanager, AsyncExitStack
 from functools import partial, wraps
+import os
 from typing import Callable
 
 from asgiar import ASGIAR
@@ -10,6 +11,8 @@ import httpx
 import pytest
 
 from kp_registry.server import app as APP
+
+os.environ["DB_URI"] = ":memory:"
 
 
 def with_context(context, *args_, **kwargs_):
