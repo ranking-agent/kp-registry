@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from kp_registry.server import app as APP
+from kp_registry.routers.kps import example
 
 os.environ["DB_URI"] = ":memory:"
 
@@ -154,3 +155,49 @@ async def test_main(client):
     ))
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_add(client):
+    """Test KP registry."""
+    # clear all KPs
+    response = await client.post('/clear')
+    assert response.status_code == 204
+
+    # add KP
+    response = await client.post('/kps', json=example)
+    assert response.status_code == 201
+
+    # get KP
+    response = await client.get(f'/kps/{list(example)[0]}')
+    assert response.status_code == 200
+
+    # try to add KP again (you cannot)
+    response = await client.post('/kps', json=example)
+    assert response.status_code == 400
+
+    # get all KPs (there is one)
+    response = await client.get('/kps')
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+    # search for KPs (find none)
+    response = await client.post('/search', json=dict(
+        subject_category=['biolink:Disease'],
+        predicate=['-biolink:association->'],
+        object_category=['biolink:Gene'],
+    ))
+    assert response.status_code == 200
+    assert not response.json()
+
+    # search for KPs (find one)
+    response = await client.post('/search', json=dict(
+        subject_category=['biolink:Disease'],
+        predicate=['biolink:related_to'],
+        object_category=['biolink:Gene'],
+    ))
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+    # Check that the response includes operations
+    assert len(response.json()['my_kp']['operations']) == 1
