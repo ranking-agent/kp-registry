@@ -11,6 +11,7 @@ import pydantic
 from reasoner_pydantic import MetaKnowledgeGraph
 
 from ..config import settings
+from ..models import KP
 from ..registry import Registry
 
 LOGGER = logging.getLogger(__name__)
@@ -18,6 +19,18 @@ LOGGER.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 LOGGER.addHandler(handler)
+
+example = {
+    "my_kp": {
+        "url": "http://my_kp_url",
+        "operations": [{
+            "subject_category": "biolink:Disease",
+            "predicate": "biolink:related_to",
+            "object_category": "biolink:Gene",
+        }],
+    }
+}
+
 
 def registry_router(db_uri=settings.db_uri):
     """Generate registry router."""
@@ -42,6 +55,15 @@ def registry_router(db_uri=settings.db_uri):
     ):
         """Get a knowledge provider by url."""
         return await registry.get_one(uid)
+
+    @router.post('/kps', status_code=status.HTTP_201_CREATED)
+    async def add_knowledge_provider(
+            kps: dict[str, KP] = Body(..., example=example),
+            registry: Registry = Depends(get_registry),
+    ):
+        """Add a knowledge provider."""
+        kps = {key: value.dict() for key, value in kps.items()}
+        await registry.add(**kps)
 
     @router.post('/search')
     async def search_for_knowledge_providers(
@@ -220,5 +242,14 @@ def registry_router(db_uri=settings.db_uri):
         """Refresh registered KPs by consulting SmartAPI registry."""
         background_tasks.add_task(load_from_smartapi)
         return "Queued refresh. It will take a few seconds."
+
+    @router.post('/clear', status_code=status.HTTP_204_NO_CONTENT)
+    async def clear_kps(
+            registry: Registry = Depends(get_registry),
+    ):
+        """Clear all registered KPs."""
+        await registry.delete_all()
+
+    return router
 
     return router
