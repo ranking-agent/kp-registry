@@ -25,7 +25,7 @@ def registry_router(db_uri=settings.db_uri):
 
     async def get_registry() -> Registry:
         """Get KP registry."""
-        async with Registry(settings.db_uri) as registry:
+        async with Registry(db_uri) as registry:
             yield registry
 
     @router.get('/kps')
