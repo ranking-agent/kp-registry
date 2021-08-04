@@ -31,6 +31,191 @@ example = {
     }
 }
 
+async def load_from_smartapi():
+    """Load KP definitions from SmartAPI."""
+    endpoints = await retrieve_kp_endpoints_from_smartapi()
+    await register_endpoints(endpoints)
+
+async def register_endpoints(endpoints):
+    """Takes list of KP endpoints defined with a dict like
+    {
+            "_id": _id,
+            "title": title,
+            "url": url,
+            "operations": operations,
+            "version": version,
+    }
+    and registers them.  "url" is used to access meta_knowledge_graph, the others are used for logging
+    """
+    async with httpx.AsyncClient() as client:
+        responses = await asyncio.gather(
+            *[
+                client.get(endpoint["url"] + "/meta_knowledge_graph")
+                for endpoint in endpoints
+            ],
+            return_exceptions=True,
+        )
+    meta_kgs = []
+    for endpoint, response in zip(endpoints, responses):
+        if isinstance(response, Exception):
+            LOGGER.warning(
+                "Error accessing /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["_id"],
+                response,
+            )
+            continue
+        if response.status_code >= 300:
+            LOGGER.warning(
+                "Bad response from /meta_knowledge_graph for %s (%s) (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["url"],
+                endpoint["_id"],
+                f"<HTTP {response.status_code}> {response.text}",
+            )
+            continue
+        try:
+            meta_kg = response.json()
+        except json.decoder.JSONDecodeError as err:
+            LOGGER.warning(
+                "Error decoding /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["_id"],
+                response.text,
+            )
+            continue
+        try:
+            # validate /meta_knowledge_graph response.
+            MetaKnowledgeGraph.parse_obj(meta_kg)
+        except pydantic.ValidationError as err:
+            LOGGER.warning(
+                "Failed to validate /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["_id"],
+                err,
+            )
+            continue
+        meta_kgs.append((endpoint, response.json()))
+    kps = dict()
+    for endpoint, meta_kg in meta_kgs:
+        try:
+            kps[endpoint["title"]] = {
+                "url": endpoint["url"] + "/query",
+                "operations": [
+                    {
+                        "subject_category": edge["subject"],
+                        "predicate": edge["predicate"],
+                        "object_category": edge["object"],
+                    }
+                    for edge in meta_kg["edges"]
+                ],
+                "details": {"preferred_prefixes": {
+                    category: value["id_prefixes"]
+                    for category, value in meta_kg["nodes"].items()
+                }},
+            }
+        except Exception as err:
+            tb = traceback.format_exc()
+            LOGGER.warning(
+                "Error parsing KP details for %s (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["_id"],
+                tb,
+            )
+    async with Registry(settings.db_uri) as registry:
+        await registry.delete_all()
+        await registry.add(**kps)
+    LOGGER.debug("Reloaded registry.")
+
+
+async def retrieve_kp_endpoints_from_smartapi():
+    """Returns a list of KP endpoints defined with a dict like
+    {
+            "_id": _id,
+            "title": title,
+            "url": url,
+            "operations": operations,
+            "version": version,
+    }
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
+    response.raise_for_status()
+    registrations = response.json()
+    endpoints = []
+    for hit in registrations["hits"]:
+        _id = hit["_id"]
+        try:
+            title = hit["info"]["title"]
+        except KeyError:
+            title = _id
+        try:
+            component = hit["info"]["x-translator"]["component"]
+        except KeyError:
+            LOGGER.warning(
+                "No x-translator.component for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        if component != "KP" and title != "BioThings Explorer ReasonerStdAPI":  # Special casing BTE.
+            LOGGER.info(
+                "component != KP for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        try:
+            version = hit["info"]["x-trapi"]["version"]
+        except KeyError:
+            LOGGER.warning(
+                "No x-trapi.version for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        if not version.startswith("1.1."):
+            LOGGER.info(
+                "TRAPI version != 1.1.x for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        try:
+            operations = hit["info"]["x-trapi"]["operations"]
+        except KeyError:
+            operations = None
+        paths = list(hit["paths"].keys())
+        try:
+            prefix = next(path for path in paths if path.endswith("/meta_knowledge_graph"))[:-21]
+        except StopIteration:
+            LOGGER.warning(
+                "No /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        try:
+            url = hit["servers"][0]["url"]
+        except (KeyError, IndexError):
+            LOGGER.warning(
+                "No servers[0].url for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            continue
+        url += prefix
+        if url.endswith('/'):
+            url = url[:-1]
+        endpoints.append({
+            "_id": _id,
+            "title": title,
+            "url": url,
+            "operations": operations,
+            "version": version,
+        })
+    return endpoints
+
 
 def registry_router(db_uri=settings.db_uri):
     """Generate registry router."""
@@ -81,162 +266,6 @@ def registry_router(db_uri=settings.db_uri):
             operation.object_category,
         )
 
-    async def load_from_smartapi():
-        """Load KP definitions from SmartAPI."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
-        response.raise_for_status()
-        registrations = response.json()
-        endpoints = []
-        for hit in registrations["hits"]:
-            _id = hit["_id"]
-            try:
-                title = hit["info"]["title"]
-            except KeyError:
-                title = _id
-            try:
-                component = hit["info"]["x-translator"]["component"]
-            except KeyError:
-                LOGGER.warning(
-                    "No x-translator.component for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            if component != "KP":
-                LOGGER.info(
-                    "component != KP for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            try:
-                version = hit["info"]["x-trapi"]["version"]
-            except KeyError:
-                LOGGER.warning(
-                    "No x-trapi.version for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            if not version.startswith("1.1."):
-                LOGGER.info(
-                    "TRAPI version != 1.1.x for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            try:
-                operations = hit["info"]["x-trapi"]["operations"]
-            except KeyError:
-                operations = None
-            paths = list(hit["paths"].keys())
-            try:
-                prefix = next(path for path in paths if path.endswith("/meta_knowledge_graph"))[:-21]
-            except StopIteration:
-                LOGGER.warning(
-                    "No /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            try:
-                url = hit["servers"][0]["url"]
-            except (KeyError, IndexError):
-                LOGGER.warning(
-                    "No servers[0].url for %s (https://smart-api.info/registry?q=%s)",
-                    title,
-                    _id,
-                )
-                continue
-            url += prefix
-            endpoints.append({
-                "_id": _id,
-                "title": title,
-                "url": url,
-                "operations": operations,
-                "version": version,
-            })
-        async with httpx.AsyncClient() as client:
-            responses = await asyncio.gather(
-                *[
-                    client.get(endpoint["url"] + "/meta_knowledge_graph")
-                    for endpoint in endpoints
-                ],
-                return_exceptions=True,
-            )
-        meta_kgs = []
-        for endpoint, response in zip(endpoints, responses):
-            if isinstance(response, Exception):
-                LOGGER.warning(
-                    "Error accessing /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s): %s",
-                    endpoint["title"],
-                    _id,
-                    response,
-                )
-                continue
-            if response.status_code >= 300:
-                LOGGER.warning(
-                    "Bad response from /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s): %s",
-                    endpoint["title"],
-                    _id,
-                    f"<HTTP {response.status_code}> {response.text}",
-                )
-                continue
-            try:
-                meta_kg = response.json()
-            except json.decoder.JSONDecodeError as err:
-                LOGGER.warning(
-                    "Error decoding /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
-                    endpoint["title"],
-                    _id,
-                    response.text,
-                )
-                continue
-            try:
-                # validate /meta_knowledge_graph response.
-                MetaKnowledgeGraph.parse_obj(meta_kg)
-            except pydantic.ValidationError as err:
-                LOGGER.warning(
-                    "Failed to validate /meta_knowledge_graph response for %s (https://smart-api.info/registry?q=%s): %s",
-                    endpoint["title"],
-                    _id,
-                    err,
-                )
-                continue
-            meta_kgs.append((endpoint, response.json()))
-
-        kps = dict()
-        for endpoint, meta_kg in meta_kgs:
-            try:
-                kps[endpoint["title"]] = {
-                    "url": endpoint["url"] + "/query",
-                    "operations": [
-                        {
-                            "subject_category": edge["subject"],
-                            "predicate": edge["predicate"],
-                            "object_category": edge["object"],
-                        }
-                        for edge in meta_kg["edges"]
-                    ],
-                    "details": {"preferred_prefixes": {
-                        category: value["id_prefixes"]
-                        for category, value in meta_kg["nodes"].items()
-                    }},
-                }
-            except Exception as err:
-                tb = traceback.format_exc()
-                LOGGER.warning(
-                    "Error parsing KP details for %s (https://smart-api.info/registry?q=%s): %s",
-                    endpoint["title"],
-                    _id,
-                    tb,
-                )
-        async with Registry(settings.db_uri) as registry:
-            await registry.delete_all()
-            await registry.add(**kps)
-        LOGGER.debug("Reloaded registry.")
-
     @router.post('/refresh', status_code=status.HTTP_202_ACCEPTED)
     async def refresh_kps(background_tasks: BackgroundTasks):
         """Refresh registered KPs by consulting SmartAPI registry."""
@@ -252,4 +281,3 @@ def registry_router(db_uri=settings.db_uri):
 
     return router
 
-    return router
