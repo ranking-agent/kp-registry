@@ -28,6 +28,7 @@ class Registry():
 
     async def __aenter__(self):
         """Enter context."""
+        print(self.uri)
         if self.db is None:
             self.db = await aiosqlite.connect(self.uri)
             self.db.row_factory = sqlite3.Row
