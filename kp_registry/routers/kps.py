@@ -47,6 +47,7 @@ async def register_endpoints(endpoints):
     }
     and registers them.  "url" is used to access meta_knowledge_graph, the others are used for logging
     """
+    LOGGER.info('register')
     async with httpx.AsyncClient() as client:
         responses = await asyncio.gather(
             *[
@@ -57,6 +58,7 @@ async def register_endpoints(endpoints):
         )
     meta_kgs = []
     for endpoint, response in zip(endpoints, responses):
+        LOGGER.info(endpoint)
         if isinstance(response, Exception):
             LOGGER.warning(
                 "Error accessing /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s): %s",
@@ -158,7 +160,7 @@ async def retrieve_kp_endpoints_from_smartapi():
                 _id,
             )
             continue
-        if component != "KP" and title != "BioThings Explorer ReasonerStdAPI":  # Special casing BTE.
+        if component != "KP":
             LOGGER.info(
                 "component != KP for %s (https://smart-api.info/registry?q=%s)",
                 title,
