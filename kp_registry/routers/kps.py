@@ -36,7 +36,7 @@ async def load_from_smartapi():
     endpoints = await retrieve_kp_endpoints_from_smartapi()
     await register_endpoints(endpoints)
 
-async def register_endpoints(endpoints):
+async def register_endpoints(endpoints,overwrite_registry=True):
     """Takes list of KP endpoints defined with a dict like
     {
             "_id": _id,
@@ -125,7 +125,8 @@ async def register_endpoints(endpoints):
                 tb,
             )
     async with Registry(settings.db_uri) as registry:
-        await registry.delete_all()
+        if overwrite_registry:
+            await registry.delete_all()
         await registry.add(**kps)
     LOGGER.debug("Reloaded registry.")
 
