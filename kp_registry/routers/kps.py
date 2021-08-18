@@ -34,9 +34,17 @@ example = {
 async def load_from_smartapi():
     """Load KP definitions from SmartAPI."""
     endpoints = await retrieve_kp_endpoints_from_smartapi()
+    BTE = {
+        "_id": None,
+        "title": "Biothings Explorer ReasonerStdAPI",
+        "url": "https://api.bte.ncats.io/v1",
+        "operations": None,
+        "version": None,
+    }
+    endpoints.append(BTE)
     await register_endpoints(endpoints)
 
-async def register_endpoints(endpoints,overwrite_registry=True):
+async def register_endpoints(endpoints):
     """Takes list of KP endpoints defined with a dict like
     {
             "_id": _id,
@@ -125,8 +133,7 @@ async def register_endpoints(endpoints,overwrite_registry=True):
                 tb,
             )
     async with Registry(settings.db_uri) as registry:
-        if overwrite_registry:
-            await registry.delete_all()
+        await registry.delete_all()
         await registry.add(**kps)
     LOGGER.debug("Reloaded registry.")
 
