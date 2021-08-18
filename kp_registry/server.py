@@ -15,13 +15,3 @@ app.include_router(registry_router())
 @app.on_event("startup")
 async def build_registry():
     await load_from_smartapi()
-    # BTE is a KP for our purposes, but it's registered like an ARA, so load_from_smartapi misses it
-    # Special casing it here is perhaps preferable to hacking around and hiding it in load_from_smartapi
-    BTE = [{
-        "_id": None,
-        "title": "Biothings Explorer ReasonerStdAPI",
-        "url": "https://api.bte.ncats.io/v1",
-        "operations": None,
-        "version": None,
-    }]
-    await register_endpoints(BTE,overwrite_registry=False)
