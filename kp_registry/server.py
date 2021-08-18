@@ -24,6 +24,4 @@ async def build_registry():
         "operations": None,
         "version": None,
     }]
-    # At the moment this fails because the BTE meta_knowledge_graph does not validate
-    # (it includes "relation: null" on all the edges)
-    await register_endpoints(BTE)
+    await register_endpoints(BTE,overwrite_registry=False)
