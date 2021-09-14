@@ -7,7 +7,7 @@ from .routers.kps import registry_router, load_from_smartapi, register_endpoints
 app = FastAPI(
     title='Knowledge Provider Registry',
     description='Registry of Translator knowledge providers',
-    version='2.3.1',
+    version='2.3.2',
 )
 
 app.include_router(registry_router())
