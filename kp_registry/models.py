@@ -29,6 +29,7 @@ class KP(BaseModel):
 class Search(BaseModel):
     """Search."""
 
+    maturity: str
     subject_category: list[str]
     predicate: list[str]
     object_category: list[str]

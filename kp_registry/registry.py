@@ -47,6 +47,7 @@ class Registry():
             'CREATE TABLE IF NOT EXISTS knowledge_providers( ' + (
                 'id TEXT, '
                 'url TEXT, '
+                'maturity TEXT, '
                 'details TEXT, '
                 'UNIQUE(id, url) '
             ) + ')'
@@ -99,6 +100,7 @@ class Registry():
         )
         rows = await cursor.fetchall()
         return {
+            "maturity": kp["maturity"],
             **json.loads(kp["details"]),
             "operations": [{
                 "subject_category": row["subject_category"],
@@ -113,6 +115,7 @@ class Registry():
             (
                 uid,
                 kp['url'],
+                kp['maturity'],
                 json.dumps(kp.get('details', {})),
             )
             for uid, kp in kps.items()
@@ -120,7 +123,7 @@ class Registry():
         # Insert rows of data
         try:
             await self.db.executemany(
-                'INSERT INTO knowledge_providers VALUES (?, ?, ?)',
+                'INSERT INTO knowledge_providers VALUES (?, ?, ?, ?)',
                 values
             )
         except sqlite3.IntegrityError as err:
@@ -153,20 +156,26 @@ class Registry():
             subject_category,
             predicate,
             object_category,
+            maturity = "production",
             **kwargs,
     ):
         """Search for KPs matching a pattern."""
         statement = (
             """
-            SELECT knowledge_providers.id, knowledge_providers.url, knowledge_providers.details,
+            SELECT knowledge_providers.id, knowledge_providers.url, knowledge_providers.maturity, knowledge_providers.details,
             operations.subject_category, operations.object_category, operations.predicate
-            FROM operations
-            JOIN knowledge_providers
+            FROM knowledge_providers
+            LEFT JOIN operations
             ON knowledge_providers.id = operations.kp
             """
         )
         conditions = []
         values = []
+        if maturity:
+            # TODO: maturity could be an ordered list of maturities and we want to return the kp
+            # with the more desired maturity
+            conditions.append(f"maturity = (?)")
+            values.append(maturity)
         if subject_category:
             conditions.append("subject_category in ({0})".format(
                 ", ".join("?" for _ in subject_category)
@@ -196,6 +205,7 @@ class Registry():
             if kp_name not in kps_with_ops:
                 kps_with_ops[kp_name] = {
                     'url': row['url'],
+                    'maturity': row['maturity'],
                     'operations': []
                 }
             # Append to operations list

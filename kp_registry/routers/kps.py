@@ -38,6 +38,7 @@ async def load_from_smartapi():
         "_id": None,
         "title": "Biothings Explorer ReasonerStdAPI",
         "url": "https://api.bte.ncats.io/v1",
+        "maturity": "production",
         "operations": None,
         "version": None,
     }
@@ -109,8 +110,10 @@ async def register_endpoints(endpoints):
     kps = dict()
     for endpoint, meta_kg in meta_kgs:
         try:
+            # TODO: handle if two KP instances have the same title
             kps[endpoint["title"]] = {
                 "url": endpoint["url"] + "/query",
+                "maturity": endpoint["maturity"],
                 "operations": [
                     {
                         "subject_category": edge["subject"],
@@ -206,6 +209,15 @@ async def retrieve_kp_endpoints_from_smartapi():
             )
             continue
         try:
+            maturity = hit["servers"][0]["x-maturity"]
+        except (KeyError, IndexError):
+            LOGGER.warning(
+                "No servers[0].x-maturity for %s (https://smart-api.info/registry?q=%s), using as production",
+                title,
+                _id,
+            )
+            maturity = "production"
+        try:
             url = hit["servers"][0]["url"]
         except (KeyError, IndexError):
             LOGGER.warning(
@@ -221,6 +233,7 @@ async def retrieve_kp_endpoints_from_smartapi():
             "_id": _id,
             "title": title,
             "url": url,
+            "maturity": maturity,
             "operations": operations,
             "version": version,
         })
@@ -266,11 +279,13 @@ def registry_router(db_uri=settings.db_uri):
                 "subject_category": ["biolink:ChemicalSubstance"],
                 "predicate": ["biolink:treats"],
                 "object_category": ["biolink:Disease"],
+                "maturity": "development",
             }),
             registry: Registry = Depends(get_registry),
     ):
         """Search for knowledge providers matching a specification."""
         return await registry.search(
+            operation.maturity,
             operation.subject_category,
             operation.predicate,
             operation.object_category,
