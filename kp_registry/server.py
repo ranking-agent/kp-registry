@@ -1,17 +1,19 @@
 """REST wrapper for KP registry SQLite server."""
-from fastapi import FastAPI
-import asyncio
-
+from .trapi_openapi import TRAPI
+from .config import settings
 from .routers.kps import registry_router, load_from_smartapi, register_endpoints
 
-app = FastAPI(
-    title='Knowledge Provider Registry',
-    description='Registry of Translator knowledge providers',
-    version='2.3.2',
+openapi_args = dict(
+    title="Knowledge Provider Registry",
+    description="Registry of Translator knowledge providers",
+    version="2.3.2",
+    translator_teams=["Ranking Agent"],
 )
 
-app.include_router(registry_router())
+APP = TRAPI(**openapi_args)
 
-@app.on_event("startup")
+APP.include_router(registry_router())
+
+@APP.on_event("startup")
 async def build_registry():
     await load_from_smartapi()
