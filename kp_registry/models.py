@@ -1,4 +1,5 @@
 """Models for KP registry."""
+from enum import Enum
 from typing import Any
 
 from pydantic import AnyUrl, BaseModel
@@ -26,10 +27,18 @@ class KP(BaseModel):
         extra = 'allow'
 
 
+class Maturity(Enum):
+    """Service maturity options."""
+
+    DEVELOPMENT = "development"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+
 class Search(BaseModel):
     """Search."""
 
-    maturity: str
+    maturity: list[Maturity]
     subject_category: list[str]
     predicate: list[str]
     object_category: list[str]
