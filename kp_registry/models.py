@@ -1,6 +1,6 @@
 """Models for KP registry."""
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import AnyUrl, BaseModel
 
@@ -38,7 +38,7 @@ class Maturity(Enum):
 class Search(BaseModel):
     """Search."""
 
-    maturity: list[Maturity]
+    maturity: Optional[list[Maturity]] = [Maturity.PRODUCTION]
     subject_category: list[str]
     predicate: list[str]
     object_category: list[str]

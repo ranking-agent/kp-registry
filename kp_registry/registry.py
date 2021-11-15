@@ -159,7 +159,7 @@ class Registry():
             subject_category,
             predicate,
             object_category,
-            maturity = ["production"],
+            maturity,
             **kwargs,
     ):
         """Search for KPs matching a pattern."""
