@@ -6,7 +6,7 @@ from .routers.kps import registry_router, load_from_smartapi, register_endpoints
 openapi_args = dict(
     title="Knowledge Provider Registry",
     description="Registry of Translator knowledge providers",
-    version="2.3.2",
+    version="2.4.0",
     translator_teams=["Ranking Agent"],
 )
 

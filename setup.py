@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='kp_registry',
-    version='2.3.2',
+    version='2.4.0',
     author='Patrick Wang',
     author_email='patrick@covar.com',
     url='https://github.com/TranslatorIIPrototypes/kp_registry',
