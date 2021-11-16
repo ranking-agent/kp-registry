@@ -37,11 +37,15 @@ async def load_from_smartapi():
     BTE = {
         "_id": None,
         "title": "Biothings Explorer ReasonerStdAPI",
+        "infores": "infores:bte",
         "url": "https://api.bte.ncats.io/v1",
+        "maturity": "production",
         "operations": None,
         "version": None,
     }
     endpoints.append(BTE)
+    BTE_dev = {**BTE, "title": f"{BTE['title']} (dev)", "maturity": "development"}
+    endpoints.append(BTE_dev)
     await register_endpoints(endpoints)
 
 async def register_endpoints(endpoints):
@@ -49,7 +53,9 @@ async def register_endpoints(endpoints):
     {
             "_id": _id,
             "title": title,
+            "infores": infores,
             "url": url,
+            "maturity": maturity,
             "operations": operations,
             "version": version,
     }
@@ -111,6 +117,8 @@ async def register_endpoints(endpoints):
         try:
             kps[endpoint["title"]] = {
                 "url": endpoint["url"] + "/query",
+                "infores": endpoint["infores"],
+                "maturity": endpoint["maturity"],
                 "operations": [
                     {
                         "subject_category": edge["subject"],
@@ -160,6 +168,15 @@ async def retrieve_kp_endpoints_from_smartapi():
         except KeyError:
             title = _id
         try:
+            infores = hit["info"]["x-translator"]["infores"]
+        except KeyError:
+            LOGGER.warning(
+                "No x-translator.infores for %s (https://smart-api.info/registry?q=%s)",
+                title,
+                _id,
+            )
+            infores = f'infores:{_id}'
+        try:
             component = hit["info"]["x-translator"]["component"]
         except KeyError:
             LOGGER.warning(
@@ -206,24 +223,41 @@ async def retrieve_kp_endpoints_from_smartapi():
             )
             continue
         try:
-            url = hit["servers"][0]["url"]
-        except (KeyError, IndexError):
+            for server in hit["servers"]:
+                try:
+                    url = server["url"]
+                    url += prefix
+                    if url.endswith('/'):
+                        url = url[:-1]
+                except KeyError:
+                    LOGGER.warning(
+                        "No servers[0].url for %s (https://smart-api.info/registry?q=%s)",
+                        title,
+                        _id,
+                    )
+                    continue
+                try:
+                    maturity = server["x-maturity"]
+                except KeyError:
+                    maturity = "production"
+
+                endpoints.append({
+                    "_id": _id,
+                    "title": title,
+                    "infores": infores,
+                    "url": url,
+                    "maturity": maturity,
+                    "operations": operations,
+                    "version": version,
+                })
+        except (KeyError):
             LOGGER.warning(
-                "No servers[0].url for %s (https://smart-api.info/registry?q=%s)",
+                "No servers for %s (https://smart-api.info/registry?q=%s)",
                 title,
                 _id,
             )
             continue
-        url += prefix
-        if url.endswith('/'):
-            url = url[:-1]
-        endpoints.append({
-            "_id": _id,
-            "title": title,
-            "url": url,
-            "operations": operations,
-            "version": version,
-        })
+        
     return endpoints
 
 
@@ -266,6 +300,7 @@ def registry_router(db_uri=settings.db_uri):
                 "subject_category": ["biolink:ChemicalSubstance"],
                 "predicate": ["biolink:treats"],
                 "object_category": ["biolink:Disease"],
+                "maturity": ["development"],
             }),
             registry: Registry = Depends(get_registry),
     ):
@@ -274,6 +309,7 @@ def registry_router(db_uri=settings.db_uri):
             operation.subject_category,
             operation.predicate,
             operation.object_category,
+            operation.maturity,
         )
 
     @router.post('/refresh', status_code=status.HTTP_202_ACCEPTED)

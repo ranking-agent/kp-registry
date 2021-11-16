@@ -12,10 +12,8 @@ ADD ./requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
 # install server
-ADD ./kp_registry ./kp_registry
-ADD ./main.sh ./main.sh
+COPY . .
 
 # setup command
-RUN mkdir data
 ENTRYPOINT ["./main.sh"]
 EXPOSE 4983
