@@ -228,10 +228,15 @@ async def retrieve_kp_endpoints_from_smartapi():
                     maturity = server["x-maturity"]
                 except KeyError:
                     maturity = "production"
+                
+                endpoint_title = title
+                # If multiple servers, need to disambiguate the service titles
+                if len(hit["servers"]) > 1:
+                    endpoint_title = f"{title}_{maturity}"
 
                 endpoints.append({
                     "_id": _id,
-                    "title": title,
+                    "title": endpoint_title,
                     "infores": infores,
                     "url": url,
                     "maturity": maturity,
