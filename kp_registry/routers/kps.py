@@ -34,18 +34,6 @@ example = {
 async def load_from_smartapi():
     """Load KP definitions from SmartAPI."""
     endpoints = await retrieve_kp_endpoints_from_smartapi()
-    BTE = {
-        "_id": None,
-        "title": "Biothings Explorer ReasonerStdAPI",
-        "infores": "infores:bte",
-        "url": "https://api.bte.ncats.io/v1",
-        "maturity": "production",
-        "operations": None,
-        "version": None,
-    }
-    endpoints.append(BTE)
-    BTE_dev = {**BTE, "title": f"{BTE['title']} (dev)", "maturity": "development"}
-    endpoints.append(BTE_dev)
     await register_endpoints(endpoints)
 
 async def register_endpoints(endpoints):
