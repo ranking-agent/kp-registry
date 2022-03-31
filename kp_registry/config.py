@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     openapi_server_url: Optional[AnyUrl]
     openapi_server_maturity: str = "development"
     openapi_server_location: str = "RENCI"
-    db_uri: str = 'file:data/kps.db'
+    db_uri: str = 'data/kps.db'
 
     class Config:
         env_file = ".env"

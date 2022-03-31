@@ -7,3 +7,5 @@ services:
       context: .
     ports:
       - "4983:4983"
+    volumes:
+      - ./data:/app/data
