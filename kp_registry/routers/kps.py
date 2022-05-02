@@ -98,7 +98,9 @@ async def register_endpoints(endpoints):
                 endpoint["_id"],
                 err,
             )
-            continue
+            # There are currently issues with reasoner pydantic: https://github.com/TranslatorSRI/reasoner-pydantic/issues/35
+            # we want to keep even invalid meta_knowledge_graphs
+            # continue
         meta_kgs.append((endpoint, response.json()))
     kps = dict()
     for endpoint, meta_kg in meta_kgs:
