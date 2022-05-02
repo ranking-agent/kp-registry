@@ -145,16 +145,35 @@ async def retrieve_kp_endpoints_from_smartapi():
     }
     """
     async with httpx.AsyncClient() as client:
-        response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
-    response.raise_for_status()
+        try:
+            response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            LOGGER.warning(f"Failed to get smart api services. Error: {e}")
+            try:
+                LOGGER.info("Trying fallback smart api query.")
+                response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI")
+                response.raise_for_status()
+            except httpx.HTTPError as e:
+                LOGGER.error("Failed to query smart api. Exiting...")
+                raise e
+
     registrations = response.json()
     endpoints = []
     for hit in registrations["hits"]:
-        _id = hit["_id"]
         try:
             title = hit["info"]["title"]
         except KeyError:
-            title = _id
+            LOGGER.warning(
+                "No title for service. Cannot use."
+            )
+            continue
+        # _id currently is missing on each "hit" (5/2/2022)
+        # https://github.com/SmartAPI/smartapi_registry/issues/7#issuecomment-1115007211
+        try:
+            _id = hit["_id"]
+        except KeyError:
+            _id = title
         try:
             infores = hit["info"]["x-translator"]["infores"]
         except KeyError:
