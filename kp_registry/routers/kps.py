@@ -210,7 +210,7 @@ async def retrieve_kp_endpoints_from_smartapi():
                 _id,
             )
             continue
-        if not version.startswith(settings.trapi_version):
+        if not version.startswith(settings.trapi_version + "."):
             LOGGER.info(
                 f"TRAPI version != {settings.trapi_version} for %s (https://smart-api.info/registry?q=%s)",
                 title,
