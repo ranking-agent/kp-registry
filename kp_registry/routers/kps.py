@@ -211,7 +211,7 @@ async def retrieve_kp_endpoints_from_smartapi():
                 _id,
             )
             continue
-        regex = re.compile("/[0-9]\.[0-9]/gm")
+        regex = re.compile("[0-9]\.[0-9]")
         trapi_version = regex.match(settings.trapi_version)
         if not version.startswith(trapi_version.group() + "."):
             LOGGER.info(
