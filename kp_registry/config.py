@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openapi_server_maturity: str = "development"
     openapi_server_location: str = "RENCI"
     db_uri: str = 'data/kps.db'
+    trapi_version: str = "1.3"
 
     class Config:
         env_file = ".env"
