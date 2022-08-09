@@ -63,7 +63,7 @@ class TRAPI(FastAPI):
             "infores": "infores:kpregistry",
         }
         openapi_schema["info"]["x-trapi"] = {
-            "version": "1.2.0",
+            "version": settings.trapi_version,
             "externalDocs": {
                 "description": "The values for version are restricted according to the regex in this external JSON schema. See schema and examples at url",
                 "url": "https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/",
