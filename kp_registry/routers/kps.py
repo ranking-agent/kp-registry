@@ -164,8 +164,6 @@ async def retrieve_kp_endpoints_from_smartapi():
     registrations = response.json()
     endpoints = []
     for hit in registrations["hits"]:
-        regex = re.compile("/[0-9]\.[0-9]/gm")
-        trapi_version = regex.match(settings.trapi_version)
         try:
             title = hit["info"]["title"]
         except KeyError:
@@ -213,6 +211,8 @@ async def retrieve_kp_endpoints_from_smartapi():
                 _id,
             )
             continue
+        regex = re.compile("/[0-9]\.[0-9]/gm")
+        trapi_version = regex.match(settings.trapi_version)
         if not version.startswith(trapi_version.group() + "."):
             LOGGER.info(
                 f"TRAPI version != {trapi_version.group()}.x for %s (https://smart-api.info/registry?q=%s)",
