@@ -1,9 +1,9 @@
 .DS_Store
 venv/
-*.db
 __pycache__/
 .vscode/
 .coverage
 *.egg-info/
 .python-version
-.env
+build/
+dist/
