@@ -9,48 +9,34 @@ smart_api_response = {
     "hits": [
         {
             "_id": "123abc",
-            "servers": [{
-                "url": "http://test-kp",
-                "x-maturity": "development",
-            }],
+            "servers": [
+                {
+                    "url": "http://test-kp",
+                    "x-maturity": "development",
+                }
+            ],
             "info": {
                 "title": "Test KP",
-                "x-translator": {
-                    "component": "KP"
-                },
-                "x-trapi": {
-                    "version": "1.3.0",
-                    "operations": [
-                        "lookup"
-                    ]
-                }
+                "x-translator": {"component": "KP"},
+                "x-trapi": {"version": "1.3.0", "operations": ["lookup"]},
             },
-            "paths": {
-                "/meta_knowledge_graph": {}
-            }
+            "paths": {"/meta_knowledge_graph": {}},
         },
         {
             "_id": "456def",
-            "servers": [{
-                "url": "http://test-kp-2",
-                "x-maturity": "development",
-            }],
+            "servers": [
+                {
+                    "url": "http://test-kp-2",
+                    "x-maturity": "development",
+                }
+            ],
             "info": {
                 "title": "Test KP 2",
-                "x-translator": {
-                    "component": "KP"
-                },
-                "x-trapi": {
-                    "version": "1.3.0",
-                    "operations": [
-                        "lookup"
-                    ]
-                }
+                "x-translator": {"component": "KP"},
+                "x-trapi": {"version": "1.3.0", "operations": ["lookup"]},
             },
-            "paths": {
-                "/meta_knowledge_graph": {}
-            }
-        }
+            "paths": {"/meta_knowledge_graph": {}},
+        },
     ]
 }
 
@@ -62,9 +48,9 @@ test_kp_response = {
         {
             "subject": "biolink:ChemicalSubstance",
             "predicate": "biolink:treats",
-            "object": "biolink:Disease"
+            "object": "biolink:Disease",
         }
-    ]
+    ],
 }
 
 test_kp_2_response = {
@@ -75,10 +61,11 @@ test_kp_2_response = {
         {
             "subject": "biolink:Gene",
             "predicate": "biolink:correlated_with",
-            "object": "biolink:Disease"
+            "object": "biolink:Disease",
         }
-    ]
-} 
+    ],
+}
+
 
 @pytest.mark.asyncio
 async def test_main(httpx_mock):
@@ -91,14 +78,14 @@ async def test_main(httpx_mock):
     await registry.refresh()
 
     # get all KPs (there is one)
-    kp = registry.get_one('Test KP')
+    kp = registry.get_one("Test KP")
     assert kp is not None
 
     # # search for KPs (find one)
     response = registry.search(
-        subject_category=['biolink:ChemicalSubstance'],
-        predicate=['biolink:treats'],
-        object_category=['biolink:Disease'],
+        subject_category=["biolink:ChemicalSubstance"],
+        predicate=["biolink:treats"],
+        object_category=["biolink:Disease"],
         maturity=["development"],
     )
     print(response)
@@ -110,13 +97,16 @@ example_kp = {
         "url": "http://my_kp_url",
         "infores": "infores:my_kp",
         "maturity": "development",
-        "operations": [{
-            "subject_category": "biolink:Disease",
-            "predicate": "biolink:related_to",
-            "object_category": "biolink:Gene",
-        }],
+        "operations": [
+            {
+                "subject_category": "biolink:Disease",
+                "predicate": "biolink:related_to",
+                "object_category": "biolink:Gene",
+            }
+        ],
     }
 }
+
 
 @pytest.mark.asyncio
 async def test_add(httpx_mock):
@@ -132,7 +122,7 @@ async def test_add(httpx_mock):
     registry.add(**example_kp)
 
     # get KP
-    kp = registry.get_one('my_kp')
+    kp = registry.get_one("my_kp")
     assert kp is not None
 
     # try to add KP again (you cannot)
@@ -144,21 +134,21 @@ async def test_add(httpx_mock):
 
     # search for KPs (find none)
     kp = registry.search(
-        subject_category=['biolink:Disease'],
-        predicate=['-biolink:association->'],
-        object_category=['biolink:Gene'],
-        maturity=['development'],
+        subject_category=["biolink:Disease"],
+        predicate=["-biolink:association->"],
+        object_category=["biolink:Gene"],
+        maturity=["development"],
     )
     assert not kp
 
     # search for KPs (find one)
     kp = registry.search(
-        subject_category=['biolink:Disease'],
-        predicate=['biolink:related_to'],
-        object_category=['biolink:Gene'],
-        maturity=['development'],
+        subject_category=["biolink:Disease"],
+        predicate=["biolink:related_to"],
+        object_category=["biolink:Gene"],
+        maturity=["development"],
     )
     assert len(kp) == 1
 
     # Check that the response includes operations
-    assert len(kp['my_kp']['operations']) == 1
+    assert len(kp["my_kp"]["operations"]) == 1
