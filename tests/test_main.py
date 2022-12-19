@@ -1,5 +1,4 @@
 """Test KP registry."""
-import httpx
 import pytest
 
 from kp_registry.main import Registry
@@ -75,80 +74,13 @@ async def test_main(httpx_mock):
     httpx_mock.add_response(json=test_kp_2_response)
     registry = Registry()
     # refresh KPs
-    await registry.refresh()
+    kps = await registry.retrieve_kps()
 
-    # get all KPs (there is one)
-    kp = registry.get_one("Test KP")
-    assert kp is not None
+    assert len(kps) == 2
 
-    # # search for KPs (find one)
-    response = registry.search(
-        subject_category=["biolink:ChemicalSubstance"],
-        predicate=["biolink:treats"],
-        object_category=["biolink:Disease"],
-        maturity=["development"],
+    assert kps["Test KP 2"]["infores"] == "infores:456def"
+
+    assert (
+        kps["Test KP"]["details"]["preferred_prefixes"]["biolink:ChemicalSubstance"]
+        == test_kp_response["nodes"]["biolink:ChemicalSubstance"]["id_prefixes"]
     )
-    print(response)
-    assert len(response) == 1
-
-
-example_kp = {
-    "my_kp": {
-        "url": "http://my_kp_url",
-        "infores": "infores:my_kp",
-        "maturity": "development",
-        "operations": [
-            {
-                "subject_category": "biolink:Disease",
-                "predicate": "biolink:related_to",
-                "object_category": "biolink:Gene",
-            }
-        ],
-    }
-}
-
-
-@pytest.mark.asyncio
-async def test_add(httpx_mock):
-    """Test manual KP registry."""
-    # httpx_mock.add_response(json=smart_api_response)
-    # httpx_mock.add_response(json=test_kp_response)
-    # httpx_mock.add_response(json=test_kp_2_response)
-    registry = Registry()
-    # clear all KPs
-    registry.clear()
-
-    # add KP
-    registry.add(**example_kp)
-
-    # get KP
-    kp = registry.get_one("my_kp")
-    assert kp is not None
-
-    # try to add KP again (you cannot)
-    registry.add(**example_kp)
-
-    # get all KPs (there is one)
-    kps = registry.get_all()
-    assert len(kps) == 1
-
-    # search for KPs (find none)
-    kp = registry.search(
-        subject_category=["biolink:Disease"],
-        predicate=["-biolink:association->"],
-        object_category=["biolink:Gene"],
-        maturity=["development"],
-    )
-    assert not kp
-
-    # search for KPs (find one)
-    kp = registry.search(
-        subject_category=["biolink:Disease"],
-        predicate=["biolink:related_to"],
-        object_category=["biolink:Gene"],
-        maturity=["development"],
-    )
-    assert len(kp) == 1
-
-    # Check that the response includes operations
-    assert len(kp["my_kp"]["operations"]) == 1
