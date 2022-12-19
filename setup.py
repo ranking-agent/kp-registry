@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="kp-registry",
-    version="2.6.0",
+    version="3.0.0",
     author="CoVar",
     url="https://github.com/ranking-agent/kp_registry",
     description="Translator KP Registry",
