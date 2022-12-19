@@ -14,7 +14,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Registry:
-
     async def retrieve_kps(self):
         """Re-query SmartAPI and recreate the list of available KPs."""
         endpoints = await self.retrieve_kp_endpoints_from_smartapi()
@@ -33,7 +32,7 @@ class Registry:
         }
         and registers them.  "url" is used to access meta_knowledge_graph, the others are used for logging
         """
-        LOGGER.info("register")
+        LOGGER.info("Registering kps")
         async with httpx.AsyncClient() as client:
             responses = await asyncio.gather(
                 *[
@@ -44,7 +43,6 @@ class Registry:
             )
         meta_kgs = []
         for endpoint, response in zip(endpoints, responses):
-            LOGGER.info(endpoint)
             if isinstance(response, asyncio.TimeoutError):
                 LOGGER.warning(
                     "%s took >60 seconds to respond",
@@ -118,6 +116,7 @@ class Registry:
                         }
                     },
                 }
+                LOGGER.info(f"Successfully registered {endpoint['title']}")
             except Exception as err:
                 tb = traceback.format_exc()
                 LOGGER.warning(
