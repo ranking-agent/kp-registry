@@ -54,7 +54,7 @@ async def register_endpoints(endpoints):
     async with httpx.AsyncClient() as client:
         responses = await asyncio.gather(
             *[
-                client.get(endpoint["url"] + "/meta_knowledge_graph")
+                client.get(endpoint["url"] + "/meta_knowledge_graph", timeout=10)
                 for endpoint in endpoints
             ],
             return_exceptions=True,
@@ -62,7 +62,15 @@ async def register_endpoints(endpoints):
     meta_kgs = []
     for endpoint, response in zip(endpoints, responses):
         LOGGER.info(endpoint)
-        if isinstance(response, Exception):
+        if isinstance(response, httpx.ReadTimeout):
+            LOGGER.warning(
+                "/meta_knowledge_graph took too long for %s (https://smart-api.info/registry?q=%s): %s",
+                endpoint["title"],
+                endpoint["_id"],
+                response,
+            )
+            continue
+        elif isinstance(response, Exception):
             LOGGER.warning(
                 "Error accessing /meta_knowledge_graph for %s (https://smart-api.info/registry?q=%s): %s",
                 endpoint["title"],
@@ -147,7 +155,7 @@ async def retrieve_kp_endpoints_from_smartapi():
             "version": version,
     }
     """
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         try:
             response = await client.get("https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP")
             response.raise_for_status()
