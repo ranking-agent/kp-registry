@@ -14,94 +14,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Registry:
-    def __init__(self):
-        self.kps = dict()
 
-    def get_all(self):
-        """Get all KPs."""
-        kps = dict()
-        for kp, val in self.kps.items():
-            kps[kp] = val["url"]
-        return kps
-
-    def get_one(self, uid):
-        """Get a specific KP."""
-        kp = self.kps[uid]
-        return kp
-
-    def add(self, **kps):
-        """Add KP(s)."""
-        self.kps.update(kps)
-
-    def search(
-        self,
-        subject_category,
-        predicate,
-        object_category,
-        maturity,
-        **kwargs,
-    ):
-        """Search for KPs matching a pattern."""
-        # maturity is list of enums
-        allowed_maturity = list(maturity)
-        kps = {}
-        for kp, val in self.kps.items():
-            if val["maturity"] not in allowed_maturity:
-                # maturity not allowed, skipping
-                continue
-            kp_name = val["infores"]
-            for operation in val["operations"]:
-                if (
-                    any(
-                        category == operation["subject_category"]
-                        for category in subject_category
-                    )
-                    and any(
-                        predicate == operation["predicate"] for predicate in predicate
-                    )
-                    and any(
-                        category == operation["object_category"]
-                        for category in object_category
-                    )
-                ):
-                    if kp_name not in kps:
-                        kps[kp_name] = {
-                            "url": val["url"],
-                            "title": kp,
-                            "infores": val["infores"],
-                            "maturity": val["maturity"],
-                            "operations": [],
-                        }
-                    else:
-                        existing_maturity = allowed_maturity.index(
-                            kps[kp_name]["maturity"]
-                        )
-                        new_maturity = allowed_maturity.index(val["maturity"])
-                        if new_maturity < existing_maturity:
-                            kps[kp_name] = {
-                                "url": val["url"],
-                                "title": kp,
-                                "infores": val["infores"],
-                                "maturity": val["maturity"],
-                                "operations": [],
-                            }
-                        elif new_maturity > existing_maturity:
-                            # worse kp maturity, skip
-                            continue
-                    kps[kp_name]["operations"].append(operation.copy())
-
-        # switch keys from infores to title
-        kps = {val["title"]: kps[key] for key, val in kps.items()}
-        return kps
-
-    def clear(self):
-        """Clear the kp list."""
-        self.kps = dict()
-
-    async def refresh(self):
+    async def retrieve_kps(self):
         """Re-query SmartAPI and recreate the list of available KPs."""
         endpoints = await self.retrieve_kp_endpoints_from_smartapi()
-        await self.register_endpoints(endpoints)
+        return await self.register_endpoints(endpoints)
 
     async def register_endpoints(self, endpoints):
         """Takes list of KP endpoints defined with a dict like
@@ -209,9 +126,8 @@ class Registry:
                     endpoint["_id"],
                     tb,
                 )
-        self.clear()
-        self.add(**kps)
         LOGGER.debug("Reloaded registry.")
+        return kps
 
     async def retrieve_kp_endpoints_from_smartapi(self):
         """Returns a list of KP endpoints defined with a dict like
