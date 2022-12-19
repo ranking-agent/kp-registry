@@ -139,7 +139,7 @@ class Registry:
                 "version": version,
         }
         """
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             try:
                 response = await client.get(
                     "https://smart-api.info/api/query?limit=1000&q=TRAPI%20KP"
