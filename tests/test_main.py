@@ -17,7 +17,7 @@ smart_api_response = {
             "info": {
                 "title": "Test KP",
                 "x-translator": {"component": "KP"},
-                "x-trapi": {"version": "1.3.0", "operations": ["lookup"]},
+                "x-trapi": {"version": "1.5.0", "operations": ["lookup"]},
             },
             "paths": {"/meta_knowledge_graph": {}},
         },
@@ -32,7 +32,7 @@ smart_api_response = {
             "info": {
                 "title": "Test KP 2",
                 "x-translator": {"component": "KP"},
-                "x-trapi": {"version": "1.3.0", "operations": ["lookup"]},
+                "x-trapi": {"version": "1.5.0", "operations": ["lookup"]},
             },
             "paths": {"/meta_knowledge_graph": {}},
         },

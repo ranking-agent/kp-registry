@@ -1,4 +1,5 @@
 """KP registry."""
+
 import asyncio
 import httpx
 import json
@@ -205,7 +206,7 @@ class Registry:
                 )
                 continue
             regex = re.compile("[0-9]\.[0-9]")
-            target_trapi_version = os.getenv("KP_TRAPI_VERSION", "1.3.0")
+            target_trapi_version = os.getenv("KP_TRAPI_VERSION", "1.5.0")
             trapi_version = regex.match(target_trapi_version)
             if not version.startswith(trapi_version.group() + "."):
                 LOGGER.info(
@@ -265,7 +266,7 @@ class Registry:
                             "version": version,
                         }
                     )
-            except (KeyError):
+            except KeyError:
                 LOGGER.warning(
                     "No servers for %s (https://smart-api.info/registry?q=%s)",
                     title,
@@ -274,3 +275,12 @@ class Registry:
                 continue
 
         return endpoints
+
+
+async def main():
+    registry = Registry()
+    await registry.retrieve_kps()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
