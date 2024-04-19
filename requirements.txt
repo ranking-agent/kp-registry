@@ -1,2 +1,2 @@
 httpx==0.16.1
-reasoner-pydantic==3.0.0
+reasoner-pydantic==5.0.2
