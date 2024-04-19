@@ -9,7 +9,7 @@ pip install kp-registry
 
 KP Registry will also use an environment variable:
 ```
-KP_TRAPI_VERSION=1.3.0
+KP_TRAPI_VERSION=1.5.0
 ```
 
 ## Usage:
