@@ -1,4 +1,5 @@
 """Setup file for kp-registry package."""
+
 from setuptools import setup
 
 setup(
