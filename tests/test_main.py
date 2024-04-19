@@ -1,4 +1,5 @@
 """Test KP registry."""
+
 import pytest
 
 from kp_registry.main import Registry
