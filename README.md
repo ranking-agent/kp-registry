@@ -1,5 +1,5 @@
 # KP Registry
-List of all valid registered Knowledge Providers on Smart API
+List of all valid registered Knowledge Providers (KPs) on Smart API
 
 ## Setup:
 To install:
@@ -19,15 +19,7 @@ from kp_registry import Registry
 # Initialize the registry
 registry = Registry()
 # Fetch all valid kps from Smart API
-registry.refresh()
-
-# Search for a kp given the following arguments
-registry.search(
-  subject_category,
-  predicate,
-  object_category,
-  maturity,
-)
+kps = await registry.retrieve_kps()
 ```
 
 ## Release
